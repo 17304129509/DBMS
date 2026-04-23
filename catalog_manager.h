@@ -1,10 +1,4 @@
-﻿//
-//  catalog.hpp
-//  catalog
-//
-//  Created by Sr on 2017/5/24.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
+﻿
 
 #ifndef _CATALOG_MANAGER_H_
 #define _CATALOG_MANAGER_H_ 1

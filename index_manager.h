@@ -1,10 +1,4 @@
-﻿//
-//  index_manager.h
-//  index_manager
-//
-//  Created by Xw on 2017/6/5.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
+﻿
 
 #ifndef _INDEX_MANAGER_H_
 #define _INDEX_MANAGER_H_ 1

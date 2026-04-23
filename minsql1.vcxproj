@@ -127,28 +127,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\minsql\api.cpp" />
-    <ClCompile Include="..\minsql\basic.cpp" />
-    <ClCompile Include="..\minsql\buffer_manager.cpp" />
-    <ClCompile Include="..\minsql\catalog_manager.cpp" />
-    <ClCompile Include="..\minsql\generator.cpp" />
-    <ClCompile Include="..\minsql\index_manager.cpp" />
-    <ClCompile Include="..\minsql\interpreter.cpp" />
-    <ClCompile Include="..\minsql\main.cpp" />
-    <ClCompile Include="..\minsql\record_manager.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\minsql\api.h" />
-    <ClInclude Include="..\minsql\basic.h" />
-    <ClInclude Include="..\minsql\bplustree.h" />
-    <ClInclude Include="..\minsql\buffer_manager.h" />
-    <ClInclude Include="..\minsql\catalog_manager.h" />
-    <ClInclude Include="..\minsql\const.h" />
-    <ClInclude Include="..\minsql\exception.h" />
-    <ClInclude Include="..\minsql\index_manager.h" />
-    <ClInclude Include="..\minsql\interpreter.h" />
-    <ClInclude Include="..\minsql\record_manager.h" />
-    <ClInclude Include="..\minsql\template_function.h" />
+    <ClCompile Include="api.cpp" />
+    <ClCompile Include="basic.cpp" />
+    <ClCompile Include="buffer_manager.cpp" />
+    <ClCompile Include="catalog_manager.cpp" />
+    <ClCompile Include="generator.cpp" />
+    <ClCompile Include="index_manager.cpp" />
+    <ClCompile Include="interpreter.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="record_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\minsql\main" />
@@ -156,6 +143,19 @@
     <None Include="..\minsql\README.md" />
     <None Include="..\minsql\test_file.sql" />
     <None Include="..\minsql\test_file1.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="api.h" />
+    <ClInclude Include="basic.h" />
+    <ClInclude Include="bplustree.h" />
+    <ClInclude Include="buffer_manager.h" />
+    <ClInclude Include="catalog_manager.h" />
+    <ClInclude Include="const.h" />
+    <ClInclude Include="exception.h" />
+    <ClInclude Include="index_manager.h" />
+    <ClInclude Include="interpreter.h" />
+    <ClInclude Include="record_manager.h" />
+    <ClInclude Include="template_function.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

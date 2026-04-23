@@ -23,7 +23,7 @@ string intToString(int n) {
     s += ss.str();
     return s;
 }
-
+/*
 void generateTestData() {
     char characters[26] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'};
     ofstream ofs("./test_file");
@@ -36,4 +36,4 @@ void generateTestData() {
         ofs << rand() % 8 + 18 << ",";
         ofs << rand() % 5 + (rand() % 6) * 0.2 << ");" << endl;
     }
-}
+}*/
