@@ -2,7 +2,7 @@
 #ifndef _API_H_
 #define _API_H_ 1
 
-#include "basic.h"
+#include "basicType.h"
 #include "record_manager.h"
 #include "buffer_manager.h"
 

@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string>
 #include <map>
-#include "basic.h"
+#include "basicType.h"
 #include "buffer_manager.h"
 #include "bplustree.h"
 

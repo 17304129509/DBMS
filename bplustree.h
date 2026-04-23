@@ -8,7 +8,7 @@
 #include <map>
 #include <iostream>
 #include <sstream>
-#include "basic.h"
+#include "basicType.h"
 #include "const.h"
 #include "exception.h"
 #include "buffer_manager.h"

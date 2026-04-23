@@ -8,12 +8,12 @@
 #include <cstring>
 #include <iomanip>
 #include "buffer_manager.h"
-#include "basic.h"
+#include "basicType.h"
 #include "exception.h"
 #include "const.h"
 
 #ifndef TABLE_MANAGER_PATH
-#define TABLE_MANAGER_PATH "./database/catalog/catalog_file"
+#define TABLE_MANAGER_PATH "./database/catalog/catalog_file"//可替换为自己的数据库路径
 #endif
 
 extern BufferManager buffer_manager;

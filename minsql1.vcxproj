@@ -128,7 +128,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="api.cpp" />
-    <ClCompile Include="basic.cpp" />
+    <ClCompile Include="basicType.cpp" />
     <ClCompile Include="buffer_manager.cpp" />
     <ClCompile Include="catalog_manager.cpp" />
     <ClCompile Include="generator.cpp" />
@@ -146,7 +146,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="api.h" />
-    <ClInclude Include="basic.h" />
+    <ClInclude Include="basicType.h" />
     <ClInclude Include="bplustree.h" />
     <ClInclude Include="buffer_manager.h" />
     <ClInclude Include="catalog_manager.h" />

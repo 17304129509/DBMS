@@ -1,6 +1,6 @@
 #include "index_manager.h"
 #include "const.h"
-#include "basic.h"
+#include "basicType.h"
 #include "buffer_manager.h"
 #include "bplustree.h"
 #include "catalog_manager.h"
