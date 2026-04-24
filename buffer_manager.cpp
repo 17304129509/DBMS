@@ -1,10 +1,11 @@
 #include "buffer_manager.h"
 
-// Page类的实现
+// Page类实现
 Page::Page() {
     initialize();
 }
-// 初始化
+
+// 页面初始化
 void Page::initialize() {
     file_name_ = "";
     block_id_ = -1;
@@ -16,61 +17,72 @@ void Page::initialize() {
         buffer_[i] = '\0';
 }
 
-// 下面是一些存取控制函数，较为简单就不赘述了
+// 设置文件名
 inline void Page::setFileName(std::string file_name) {
     file_name_ = file_name;
 }
 
+// 获取文件名
 inline std::string Page::getFileName() {
     return file_name_;
 }
 
+// 设置块号
 inline void Page::setBlockId(int block_id) {
     block_id_ = block_id;
 }
 
+// 获取块号
 inline int Page::getBlockId() {
     return block_id_;
 }
 
+// 设置pin计数
 inline void Page::setPinCount(int pin_count) {
     pin_count_ = pin_count;
 }
 
+// 获取pin计数
 inline int Page::getPinCount() {
     return pin_count_;
 }
 
+// 设置脏位
 inline void Page::setDirty(bool dirty) {
     dirty_ = dirty;
 }
 
+// 获取脏位状态
 inline bool Page::getDirty() {
     return dirty_;
 }
 
+// 设置引用位
 inline void Page::setRef(bool ref) {
     ref_ = ref;
 }
 
+// 获取引用位状态
 inline bool Page::getRef() {
     return ref_;
 }
 
+// 设置可用状态
 inline void Page::setAvaliable(bool avaliable) {
     avaliable_ = avaliable;
 }
 
+// 获取可用状态
 inline bool Page::getAvaliable() {
     return avaliable_;
 }
 
+// 获取缓冲区指针
 inline char* Page::getBuffer() {
     return buffer_;
 }
 
-// BufferManager类的实现
-// 构造函数均调用实际初始化函数完成初始化
+// 缓冲池管理类实现
 BufferManager::BufferManager() {
     initialize(MAXFRAMESIZE);
 }
@@ -79,7 +91,7 @@ BufferManager::BufferManager(int frame_size) {
     initialize(frame_size);
 }
 
-// 析构函数非常重要。在程序结束时需要将缓冲池里的所有页写回磁盘。
+// 析构函数，程序结束时将所有缓冲页写回磁盘
 BufferManager::~BufferManager() {
     for (int i = 0;i < frame_size_;i++) {
         std::string file_name;
@@ -90,14 +102,14 @@ BufferManager::~BufferManager() {
     }
 }
 
-// 实际初始化函数
+// 缓冲池初始化
 void BufferManager::initialize(int frame_size) {
-    Frames = new Page[frame_size];//在堆上分配内存
+    Frames = new Page[frame_size];
     frame_size_ = frame_size;
     current_position_ = 0;
 }
 
-// 下面几个函数较为简单，也不赘述了
+// 获取指定文件和块号的页面
 char* BufferManager::getPage(std::string file_name , int block_id) {
     int page_id = getPageId(file_name , block_id);
     if (page_id == -1) {
@@ -108,15 +120,18 @@ char* BufferManager::getPage(std::string file_name , int block_id) {
     return Frames[page_id].getBuffer();
 }
 
+// 将页面标记为已修改
 void BufferManager::modifyPage(int page_id) {
     Frames[page_id].setDirty(true);
 }
 
+// 锁定页面，增加pin计数
 void BufferManager::pinPage(int page_id) {
     int pin_count = Frames[page_id].getPinCount();
     Frames[page_id].setPinCount(pin_count + 1);
 }
 
+// 解锁页面，减少pin计数
 int BufferManager::unpinPage(int page_id) {
     int pin_count = Frames[page_id].getPinCount();
     if (pin_count <= 0) 
@@ -126,25 +141,18 @@ int BufferManager::unpinPage(int page_id) {
     return 0;
 }
 
-// 核心函数之一。内存和磁盘交互的接口。
+// 从磁盘读取数据块到内存页
 int BufferManager::loadDiskBlock(int page_id , std::string file_name , int block_id) {
-    // 初始化一个页
     Frames[page_id].initialize();
-    // 打开磁盘文件
     FILE* f;
     errno_t err = fopen_s(&f, file_name.c_str() , "r");
-    // 打开失败返回-1
     if (err != 0 || f == NULL)
         return -1;
-    // 将文件指针定位到对应位置
     fseek(f , PAGESIZE * block_id , SEEK_SET);
-    // 获取页的句柄
     char* buffer = Frames[page_id].getBuffer();
-    // 读取对应磁盘块到内存页
     fread(buffer , PAGESIZE , 1 , f);
-    // 关闭文件
     fclose(f);
-    // 对新载入的页进行相应设置
+
     Frames[page_id].setFileName(file_name);
     Frames[page_id].setBlockId(block_id);
     Frames[page_id].setPinCount(1);
@@ -154,26 +162,20 @@ int BufferManager::loadDiskBlock(int page_id , std::string file_name , int block
     return 0;
 }
 
-// 核心函数之一。内存和磁盘交互的接口。
+// 将内存页写回磁盘
 int BufferManager::flushPage(int page_id , std::string file_name , int block_id) {
-    // 打开文件
     FILE* f;
     errno_t err = fopen_s(&f, file_name.c_str() , "r+");
-    // 其实这里有写多余，因为打开一个文件读总是能成功。
     if (err != 0 || f == NULL)
         return -1; 
-    // 将文件指针定位到对应位置
     fseek(f , PAGESIZE * block_id , SEEK_SET);
-    // 获取页的句柄
     char* buffer = Frames[page_id].getBuffer();
-    // 将内存页的内容写入磁盘块
     fwrite(buffer , PAGESIZE , 1 , f);
-    // 关闭文件
     fclose(f);
     return 0;
 }
 
-// 简单遍历获取页号
+// 根据文件名和块号查找页面编号
 int BufferManager::getPageId(std::string file_name , int block_id) {
     for (int i = 0;i < frame_size_;i++) {
         std::string tmp_file_name = Frames[i].getFileName();
@@ -184,36 +186,26 @@ int BufferManager::getPageId(std::string file_name , int block_id) {
     return -1;
 }
 
-// 寻找一个闲置的页
+// 获取空闲页面，采用时钟替换算法
 int BufferManager::getEmptyPageId() {
-    // 先简单的遍历一遍，如果有闲置的直接返回其页号
     for (int i = 0;i < frame_size_;i++) {
         if (Frames[i].getAvaliable() == true)
             return i;
     }
-    // 如果所有页都已经被使用，那么需要找到一个页，将其删除掉。
-    // 这里需要使用一些策略来选择哪一个页应该被删除。
-    // 本程序中采用时钟替换策略。
+
     while (1) {
-        // 如果页的ref为true，将其设为false
         if (Frames[current_position_].getRef() == true) {
             Frames[current_position_].setRef(false);
         }
-        // 否则，如果页对应的pin_count为0，即页没有被锁住，那么这一页就
-        // 会被删除。
         else if (Frames[current_position_].getPinCount() == 0) {
-            // 如果这一页被改动过，需要将其写回磁盘，然后删除
             if (Frames[current_position_].getDirty() == true) {
                 std::string file_name = Frames[current_position_].getFileName();
                 int block_id = Frames[current_position_].getBlockId();
                 flushPage(current_position_ , file_name , block_id);
             }
-            // 删除页
             Frames[current_position_].initialize();
-            // 返回页号
             return current_position_;
         }
-        // 时钟指针顺时针转动
         current_position_ = (current_position_ + 1) % frame_size_;
     }
 }
