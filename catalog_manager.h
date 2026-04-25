@@ -1,10 +1,4 @@
-﻿//
-//  catalog.hpp
-//  catalog
-//
-//  Created by Sr on 2017/5/24.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
+﻿
 
 #ifndef _CATALOG_MANAGER_H_
 #define _CATALOG_MANAGER_H_ 1
@@ -14,12 +8,12 @@
 #include <cstring>
 #include <iomanip>
 #include "buffer_manager.h"
-#include "basic.h"
+#include "basicType.h"
 #include "exception.h"
 #include "const.h"
 
 #ifndef TABLE_MANAGER_PATH
-#define TABLE_MANAGER_PATH "./database/catalog/catalog_file"
+#define TABLE_MANAGER_PATH "./database/catalog/catalog_file"//可替换为自己的数据库路径
 #endif
 
 extern BufferManager buffer_manager;

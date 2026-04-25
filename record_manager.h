@@ -1,10 +1,4 @@
-﻿//
-//  record_manager.h
-//  record_manager
-//
-//  Created by Hys on 2017/5/30.
-//  Copyright © 2017年 Hys. All rights reserved.
-//
+﻿
 #ifndef _RECORD_MANAGER_H_
 #define _RECORD_MANAGER_H_ 1
 #define INF 1000000
@@ -14,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include "basic.h"
+#include "basicType.h"
 #include "index_manager.h"
 #include "catalog_manager.h"
 #include "buffer_manager.h"

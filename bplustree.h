@@ -1,10 +1,4 @@
-﻿//
-//  bplustree.h
-//  bplustree
-//
-//  Created by Xw on 2017/5/31.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
+﻿
 
 #ifndef _BPLUSTREE_H_
 #define _BPLUSTREE_H_ 1
@@ -14,7 +8,7 @@
 #include <map>
 #include <iostream>
 #include <sstream>
-#include "basic.h"
+#include "basicType.h"
 #include "const.h"
 #include "exception.h"
 #include "buffer_manager.h"

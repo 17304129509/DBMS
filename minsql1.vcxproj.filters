@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\minsql\api.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="..\minsql\basic.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -40,6 +37,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\minsql\record_manager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="api.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

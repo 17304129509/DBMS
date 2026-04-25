@@ -8,7 +8,7 @@
 #include <fstream>
 #include "catalog_manager.h"
 #include "api.h"
-#include "basic.h"
+#include "basicType.h"
 
 class Interpreter {
 public:
