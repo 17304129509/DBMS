@@ -1,27 +1,43 @@
+// interpreter.cpp - SQLè§£é‡Šå™¨
+// è´Ÿè´£è¯»å–ç”¨æˆ·è¾“å…¥çš„SQLè¯­å¥ï¼Œè¿›è¡Œè¯æ³•åˆ†æå’Œè¯­æ³•åˆ†æï¼Œ
+// ç„¶åè°ƒç”¨APIå±‚æ‰§è¡Œç›¸åº”çš„æ•°æ®åº“æ“ä½œã€‚
+//
+// æ”¯æŒçš„SQLè¯­å¥ï¼š
+//   DDL: CREATE TABLE, DROP TABLE, CREATE INDEX, DROP INDEX,
+//        CREATE DATABASE, DROP DATABASE, ALTER TABLE
+//   DML: INSERT, DELETE, SELECT
+//   å…¶ä»–: USE, DESCRIBE/DESC, EXIT, EXECFILE
+
 #include "interpreter.h"
+#include <fstream>
+#include <sstream>
 
 Interpreter::Interpreter() {
 }
 
-//½«query½øĞĞ¸³Öµ
+// ä»æ ‡å‡†è¾“å…¥è¯»å–ä¸€æ¡SQLè¯­å¥ï¼ˆä»¥åˆ†å·ç»“å°¾ï¼‰
+// æ”¯æŒå¤šè¡Œè¾“å…¥ï¼Œç›´åˆ°é‡åˆ°åˆ†å·æ‰è®¤ä¸ºè¯­å¥ç»“æŸ
 void Interpreter::getQuery() {
     std::string tmp;
-    //µÃµ½Ò»ĞĞµÄËùÓĞ×Ö·û£¬µ±×îºóÒ»¸ö×Ö·ûÎª·ÖºÅÊ±½áÊø
     do {
         std::cout << ">>> ";
         getline(std::cin, tmp);
         query += tmp;
         query += ' ';
     } while (tmp[tmp.length() - 1] != ';');
-    //ÔÚ×îºó²¹Ò»¸ö½áÎ²±êÊ¶·û
+    // å°†æœ«å°¾çš„åˆ†å·æ›¿æ¢ä¸º\0ï¼Œè¡¨ç¤ºå­—ç¬¦ä¸²ç»“æŸ
     query[query.length() - 2] = '\0';
-    //µ÷ÓÃNormalize½øĞĞ×Ö·û´®µÄ¹æ·¶»¯
+    // å¯¹SQLè¯­å¥è¿›è¡Œæ ‡å‡†åŒ–å¤„ç†
     Normalize();
 }
 
+// å¯¹SQLè¯­å¥è¿›è¡Œæ ‡å‡†åŒ–å¤„ç†
+// 1. åœ¨æ“ä½œç¬¦(*,=,,,(,),<,>)å‰åæ·»åŠ ç©ºæ ¼ï¼Œä¾¿äºåç»­æŒ‰ç©ºæ ¼åˆ†å‰²å•è¯
+// 2. åˆ é™¤è¿ç»­çš„å¤šä½™ç©ºæ ¼å’Œåˆ¶è¡¨ç¬¦
+// 3. å°†ç¬¬ä¸€ä¸ªSQLå…³é”®å­—è½¬ä¸ºå°å†™ï¼Œä¾¿äºç»Ÿä¸€åŒ¹é…
 void Interpreter::Normalize() {
-    //ÔÚËùÓĞµÄÌØÊâ·ûºÅµÄÇ°ºóÔö¼ÓÒ»¸ö¿Õ¸ñÒÔ²ğ·Ö¶ÎÂä
-    for (int pos = 0; pos < query.length(); pos++) {
+    // åœ¨æ‰€æœ‰æ“ä½œç¬¦å‰åæ·»åŠ ç©ºæ ¼ä»¥ä¾¿äºåˆ†å‰²
+    for (int pos = 0; pos < (int)query.length(); pos++) {
         if (query[pos] == '*' || query[pos] == '=' || query[pos] == ',' || query[pos] == '(' || query[pos] == ')' || query[pos] == '<' || query[pos] == '>') {
             if (query[pos - 1] != ' ')
                 query.insert(pos++, " ");
@@ -29,9 +45,9 @@ void Interpreter::Normalize() {
                 query.insert(++pos, " ");
         }
     }
-    //ÔÚ½áÎ²²¹Ò»¸ö¿Õ¸ñÒÔ¹æ·¶»¯
+    // åœ¨ç»“å°¾åŠ ä¸€ä¸ªç©ºæ ¼
     query.insert(query.length() - 2, " ");
-    //É¾³ı¶ÎÂäÖĞµÄ¶àÓà¿Õ¸ñ
+    // åˆ é™¤å¤šä½™çš„ç©ºæ ¼
     std::string::iterator it;
     int flag = 0;
     for (it = query.begin(); it < query.end(); it++) {
@@ -50,32 +66,39 @@ void Interpreter::Normalize() {
             continue;
         }
     }
-    //Èç¹û¶ÎÂä¿ªÊ¼ÓĞ¿Õ¸ñ£¬¾ÍÉ¾³ı¶àÓà¿Õ¸ñÒÔ¹æ·¶»¯
+    // åˆ é™¤å¼€å¤´çš„ç©ºæ ¼
     if (query[0] == ' ')
         query.erase(query.begin());
-    //½«queryµÄµÚÒ»¸ö´ÊÈ«²¿×ª»»ÎªĞ¡Ğ´£¬·½±ãÖ®ºó¶Ô×Ö·û´®µÄ½âÎö
+    // å°†ç¬¬ä¸€ä¸ªå•è¯è½¬ä¸ºå°å†™ï¼Œç”¨äºåˆ¤æ–­SQLè¯­å¥ç±»å‹
     query = getLower(query, 0);
 }
 
+// SQLè¯­å¥æ‰§è¡Œå…¥å£
+// æ ¹æ®ç¬¬ä¸€ä¸ªå…³é”®å­—åˆ¤æ–­SQLè¯­å¥ç±»å‹ï¼Œè°ƒç”¨å¯¹åº”çš„EXEC_XXXæ–¹æ³•
+// æ‰€æœ‰å¼‚å¸¸åœ¨æ­¤å¤„ç»Ÿä¸€æ•è·å¹¶è¾“å‡ºå‹å¥½çš„é”™è¯¯ä¿¡æ¯
 void Interpreter::EXEC() {
     try {
-        //¸ù¾İ×Ö·û´®µÄµÚÒ»¸öµ¥´ÊÀ´¶ÔËù½øĞĞµÄ²Ù×÷½âÎö
         if (query.substr(0, 6) == "select") {
             EXEC_SELECT();
         }
-        //ÓÉÓÚdropÓĞÁ½ÖÖÇé¿ö£¬ËùÒÔĞèÒª½øĞĞ½øÒ»²½µÄ½âÎö
         else if (query.substr(0, 4) == "drop") {
+            // DROPè¯­å¥æœ‰ä¸‰ç§ï¼šDROP TABLE, DROP INDEX, DROP DATABASE
+            // å°†ç¬¬äºŒä¸ªå…³é”®å­—è½¬ä¸ºå°å†™ååˆ¤æ–­
             query = getLower(query, 5);
             if (query.substr(5, 5) == "table")
                 EXEC_DROP_TABLE();
             else if (query.substr(5, 5) == "index")
                 EXEC_DROP_INDEX();
+            else if (query.substr(5, 8) == "database")
+                EXEC_DROP_DATABASE();
+            else
+                throw input_format_error();
         }
         else if (query.substr(0, 6) == "insert") {
             EXEC_INSERT();
         }
-        //createÒ²ÓĞÁ½ÖÖÇé¿ö
         else if (query.substr(0, 6) == "create") {
+            // CREATEè¯­å¥æœ‰ä¸‰ç§ï¼šCREATE TABLE, CREATE INDEX, CREATE DATABASE
             query = getLower(query, 7);
             if (query.substr(7, 5) == "table") {
                 EXEC_CREATE_TABLE();
@@ -83,26 +106,41 @@ void Interpreter::EXEC() {
             else if (query.substr(7, 5) == "index") {
                 EXEC_CREATE_INDEX();
             }
+            else if (query.substr(7, 8) == "database") {
+                EXEC_CREATE_DATABASE();
+            }
+            else
+                throw input_format_error();
         }
         else if (query.substr(0, 6) == "delete") {
             EXEC_DELETE();
         }
-        //µ÷ÓÃdescribeÓĞÁ½ÖÖ·½Ê½£¬ËùÒÔÊ¹ÓÃ»òÂß¼­
+        else if (query.substr(0, 5) == "alter") {
+            // ALTER TABLE <name> ADD/DROP/MODIFY COLUMN ...
+            query = getLower(query, 6);
+            EXEC_ALTER_TABLE();
+        }
+        else if (query.substr(0, 3) == "use") {
+            // USE <name> åˆ‡æ¢å½“å‰æ•°æ®åº“
+            EXEC_USE_DATABASE();
+        }
         else if (query.substr(0, 8) == "describe" || query.substr(0, 4) == "desc") {
+            // DESCRIBE/DESC <name> æ˜¾ç¤ºè¡¨ç»“æ„
             EXEC_SHOW();
         }
         else if (query.substr(0, 4) == "exit" && query[5] == '\0') {
             EXEC_EXIT();
         }
         else if (query.substr(0, 8) == "execfile") {
+            // EXECFILE <path> ä»æ–‡ä»¶ä¸­é€è¡Œè¯»å–å¹¶æ‰§è¡ŒSQLè¯­å¥
             EXEC_FILE();
         }
-        //Èç¹ûËùÓĞÖ¸Áî¶¼²»ÄÜ¶ÔÓ¦£¬ÔòÅ×³öÊäÈë¸ñÊ½´íÎó
         else {
             throw input_format_error();
         }
     }
 
+    // ===== å¼‚å¸¸å¤„ç†ï¼šè¾“å‡ºå‹å¥½çš„é”™è¯¯ä¿¡æ¯ =====
     catch (table_exist error) {
         std::cout << ">>> Error: Table has existed!" << std::endl;
     }
@@ -111,6 +149,9 @@ void Interpreter::EXEC() {
     }
     catch (attribute_not_exist error) {
         std::cout << ">>> Error: Attribute not exist!" << std::endl;
+    }
+    catch (attribute_exist error) {
+        std::cout << ">>> Error: Attribute already exists!" << std::endl;
     }
     catch (index_exist error) {
         std::cout << ">>> Error: Index has existed!" << std::endl;
@@ -133,6 +174,12 @@ void Interpreter::EXEC() {
     catch (unique_conflict error) {
         std::cout << ">>> Error: unique conflict!" << std::endl;
     }
+    catch (database_exist error) {
+        std::cout << ">>> Error: Database already exists!" << std::endl;
+    }
+    catch (database_not_exist error) {
+        std::cout << ">>> Error: Database not exists!" << std::endl;
+    }
     catch (exit_command error) {
         std::cout << ">>> Bye bye~" << std::endl;
         exit(0);
@@ -142,6 +189,163 @@ void Interpreter::EXEC() {
     }
 }
 
+// ===== CREATE DATABASE <name> =====
+// åˆ›å»ºä¸€ä¸ªæ–°çš„æ•°æ®åº“ï¼ŒåŒ…å«catalog/data/indexä¸‰ä¸ªå­ç›®å½•
+void Interpreter::EXEC_CREATE_DATABASE() {
+    int check_index;
+    // "create database " å…±16ä¸ªå­—ç¬¦ï¼ˆå«ç©ºæ ¼ï¼‰
+    std::string db_name = getWord(16, check_index);
+    // æ£€æŸ¥è¯­å¥æ˜¯å¦æœ‰å¤šä½™å†…å®¹
+    if (query[check_index + 1] != '\0')
+        throw input_format_error();
+    API API;
+    API.createDatabase(db_name);
+    std::cout << ">>> SUCCESS" << std::endl;
+}
+
+// ===== DROP DATABASE <name> =====
+// åˆ é™¤ä¸€ä¸ªæ•°æ®åº“åŠå…¶æ‰€æœ‰æ•°æ®
+void Interpreter::EXEC_DROP_DATABASE() {
+    int check_index;
+    // "drop database " å…±14ä¸ªå­—ç¬¦ï¼ˆå«ç©ºæ ¼ï¼‰
+    std::string db_name = getWord(14, check_index);
+    if (query[check_index + 1] != '\0')
+        throw input_format_error();
+    API API;
+    API.dropDatabase(db_name);
+    std::cout << ">>> SUCCESS" << std::endl;
+}
+
+// ===== USE <name> =====
+// åˆ‡æ¢å½“å‰ä½¿ç”¨çš„æ•°æ®åº“ï¼Œåç»­æ“ä½œåœ¨è¯¥æ•°æ®åº“çš„ç›®å½•ä¸‹è¿›è¡Œ
+void Interpreter::EXEC_USE_DATABASE() {
+    int check_index;
+    // "use " å…±4ä¸ªå­—ç¬¦ï¼ˆå«ç©ºæ ¼ï¼‰
+    std::string db_name = getWord(4, check_index);
+    if (query[check_index + 1] != '\0')
+        throw input_format_error();
+    // éªŒè¯æ•°æ®åº“ç›®å½•æ˜¯å¦å­˜åœ¨
+    CatalogManager cm;
+    if (!cm.hasDatabase(db_name))
+        throw database_not_exist();
+    // è®¾ç½®å…¨å±€å˜é‡current_databaseï¼Œå½±å“åç»­æ‰€æœ‰æ–‡ä»¶è·¯å¾„
+    current_database = db_name;
+    std::cout << ">>> Database changed to " << db_name << std::endl;
+}
+
+// ===== ALTER TABLE <name> ADD/DROP/MODIFY COLUMN ... =====
+// ä¿®æ”¹è¡¨ç»“æ„ï¼šæ·»åŠ å­—æ®µã€åˆ é™¤å­—æ®µã€ä¿®æ”¹å­—æ®µç±»å‹/çº¦æŸ
+void Interpreter::EXEC_ALTER_TABLE() {
+    API API;
+    CatalogManager CM;
+    int check_index;
+
+    // "alter table " å…±12ä¸ªå­—ç¬¦ï¼ˆå«ç©ºæ ¼ï¼‰ï¼ŒéªŒè¯TABLEå…³é”®å­—
+    if (query.substr(6, 5) != "table")
+        throw input_format_error();
+
+    // æå–è¡¨åå¹¶éªŒè¯è¡¨æ˜¯å¦å­˜åœ¨
+    std::string table_name = getWord(12, check_index);
+    if (!CM.hasTable(table_name))
+        throw table_not_exist();
+
+    check_index++;
+    // è·å–æ“ä½œç±»å‹ï¼šadd/drop/modify
+    std::string operation = getWord(check_index, check_index);
+    operation = getLower(operation, 0);
+
+    if (operation == "add") {
+        // è¯­æ³•ï¼šALTER TABLE <name> ADD [COLUMN] <attr_name> <type> [unique]
+        check_index++;
+        std::string next_word = getWord(check_index, check_index);
+        std::string lower_next = getLower(next_word, 0);
+
+        // COLUMNå…³é”®å­—å¯é€‰ï¼Œå¦‚æœå‡ºç°åˆ™è·³è¿‡
+        std::string attr_name;
+        if (lower_next == "column") {
+            check_index++;
+            attr_name = getWord(check_index, check_index);
+        } else {
+            attr_name = next_word;
+        }
+
+        // è§£æå±æ€§ç±»å‹ï¼ˆint/float/char(n)ï¼‰
+        check_index++;
+        short type = getType(check_index, check_index);
+        check_index++;
+
+        // æ£€æŸ¥æ˜¯å¦æœ‰uniqueå…³é”®å­—
+        bool unique = false;
+        if (check_index + 1 < (int)query.length() && query[check_index + 1] != '\0') {
+            std::string unique_check = getWord(check_index + 1, check_index);
+            if (getLower(unique_check, 0) == "unique") {
+                unique = true;
+            }
+        }
+
+        API.alterTableAddColumn(table_name, attr_name, type, unique);
+        std::cout << ">>> SUCCESS" << std::endl;
+    }
+    else if (operation == "drop") {
+        // è¯­æ³•ï¼šALTER TABLE <name> DROP COLUMN <attr_name>
+        check_index++;
+        std::string next_word = getWord(check_index, check_index);
+        std::string lower_next = getLower(next_word, 0);
+
+        // COLUMNå…³é”®å­—å¯é€‰
+        std::string attr_name;
+        if (lower_next == "column") {
+            check_index++;
+            attr_name = getWord(check_index, check_index);
+        } else {
+            attr_name = next_word;
+        }
+
+        // æ£€æŸ¥è¯­å¥æ˜¯å¦ç»“æŸ
+        if (query[check_index + 1] != '\0')
+            throw input_format_error();
+
+        API.alterTableDropColumn(table_name, attr_name);
+        std::cout << ">>> SUCCESS" << std::endl;
+    }
+    else if (operation == "modify") {
+        // è¯­æ³•ï¼šALTER TABLE <name> MODIFY COLUMN <attr_name> <type> [unique]
+        check_index++;
+        std::string next_word = getWord(check_index, check_index);
+        std::string lower_next = getLower(next_word, 0);
+
+        // COLUMNå…³é”®å­—å¯é€‰
+        std::string attr_name;
+        if (lower_next == "column") {
+            check_index++;
+            attr_name = getWord(check_index, check_index);
+        } else {
+            attr_name = next_word;
+        }
+
+        // è§£ææ–°çš„å±æ€§ç±»å‹
+        check_index++;
+        short new_type = getType(check_index, check_index);
+        check_index++;
+
+        // æ£€æŸ¥æ˜¯å¦æœ‰uniqueå…³é”®å­—
+        bool unique = false;
+        if (check_index + 1 < (int)query.length() && query[check_index + 1] != '\0') {
+            std::string unique_check = getWord(check_index + 1, check_index);
+            if (getLower(unique_check, 0) == "unique") {
+                unique = true;
+            }
+        }
+
+        API.alterTableModifyColumn(table_name, attr_name, new_type, unique);
+        std::cout << ">>> SUCCESS" << std::endl;
+    }
+    else {
+        throw input_format_error();
+    }
+}
+
+// ===== CREATE INDEX <index_name> ON <table_name>(<attr_name>) =====
 void Interpreter::EXEC_CREATE_INDEX() {
     CatalogManager CM;
     API API;
@@ -149,66 +353,66 @@ void Interpreter::EXEC_CREATE_INDEX() {
     std::string table_name;
     std::string attr_name;
     int check_index;
+    // "create index " å…±13ä¸ªå­—ç¬¦
     index_name = getWord(13, check_index);
     check_index++;
+    // éªŒè¯ONå…³é”®å­—
     if (getLower(query, check_index).substr(check_index, 2) != "on")
-        throw 1;//¸ñÊ½´íÎó
+        throw input_format_error();
     table_name = getWord(check_index + 3, check_index);
     if (!CM.hasTable(table_name))
-        throw table_not_exist();//table not exist
+        throw table_not_exist();
+    // è§£ææ‹¬å·ä¸­çš„å±æ€§å
     if (query[check_index + 1] != '(')
-        throw 1;//¸ñÊ½´íÎó
+        throw input_format_error();
     attr_name = getWord(check_index + 3, check_index);
     if (query[check_index + 1] != ')' || query[check_index + 3] != '\0')
-        throw 1;//¸ñÊ½´íÎó
+        throw input_format_error();
     API.createIndex(table_name, index_name, attr_name);
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== DROP INDEX <index_name> ON <table_name> =====
 void Interpreter::EXEC_DROP_INDEX() {
     API API;
     std::string table_name;
     std::string index_name;
     int check_index;
-    //µÃµ½indexµÄÃû×Ö
+    // "drop index " å…±11ä¸ªå­—ç¬¦
     index_name = getWord(11, check_index);
     check_index++;
-    //¸ñÊ½´íÎóµÄÇé¿ö
+    // éªŒè¯ONå…³é”®å­—
     if (getLower(query, check_index).substr(check_index, 2) != "on")
-        throw 1;//¸ñÊ½´íÎó
-    //µÃµ½tableµÄÃû×Ö
+        throw input_format_error();
     table_name = getWord(check_index + 3, check_index);
-    //Èç¹ûtableµÄÃû×ÖÖ®ºóÓĞ¶àÓà×Ö·û´®£¬ÔòÊÇ¸ñÊ½´íÎó
     if (query[check_index + 1] != '\0')
-        throw 1;//ÊäÈë´íÎó
+        throw input_format_error();
     API.dropIndex(table_name, index_name);
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== EXIT =====
+// é€€å‡ºMiniSQLç¨‹åº
 void Interpreter::EXEC_EXIT() {
-    //Èç¹ûĞèÒªÍË³ö£¬Ö±½ÓÅ×³öÒ»¸öexit command
     throw exit_command();
 }
 
+// ===== EXECFILE <file_path> =====
+// ä»æŒ‡å®šæ–‡ä»¶ä¸­é€è¡Œè¯»å–SQLè¯­å¥å¹¶æ‰§è¡Œ
 void Interpreter::EXEC_FILE() {
     int check_index = 0;
     int start_index = 0;
     std::string tmp_query;
-    //µÃµ½ÎÄ¼şÂ·¾¶
+    // "execfile " å…±9ä¸ªå­—ç¬¦
     std::string file_path = getWord(9, check_index);
-    //Èç¹ûÂ·¾¶ºó»¹ÓĞ¶îÍâµÄ×Ö·û£¬ÔòÊÇ¸ñÊ½´íÎó
     if (query[check_index + 1] != '\0')
-        throw 1;//¸ñÊ½´íÎó
-    std::string::iterator it;
-    //´´½¨¸öÎÄ¼şÁ÷¶ÔÏó,²¢´ò¿ª
+        throw input_format_error();
+    // è¯»å–æ•´ä¸ªæ–‡ä»¶å†…å®¹
     std::fstream fs(file_path);
-    //´´½¨×Ö·û´®Á÷¶ÔÏó
     std::stringstream ss;
-    //°ÑÎÄ¼şÁ÷ÖĞµÄ×Ö·ûÊäÈëµ½×Ö·û´®Á÷ÖĞ
     ss << fs.rdbuf();
-    //»ñÈ¡Á÷ÖĞµÄ×Ö·û´®
     tmp_query = ss.str();
-    //ÔÙÖ´ĞĞÒ»´Î
+    // æŒ‰è¡Œåˆ†å‰²å¹¶é€æ¡æ‰§è¡Œ
     check_index = 0;
     do {
         while (tmp_query[check_index] != '\n')
@@ -221,20 +425,21 @@ void Interpreter::EXEC_FILE() {
     } while (tmp_query[check_index] != '\0');
 }
 
+// ===== DESCRIBE/DESC <table_name> =====
+// æ˜¾ç¤ºè¡¨çš„ç»“æ„ä¿¡æ¯ï¼ˆå±æ€§ã€ç±»å‹ã€ç´¢å¼•ç­‰ï¼‰
 void Interpreter::EXEC_SHOW() {
     CatalogManager CM;
     std::string table_name;
     int check_index;
-    //µÃµ½µÚÒ»¸öµ¥´ÊµÄ½áÊøµÄÎ»ÖÃ
+    // è·³è¿‡describe/descå…³é”®å­—ï¼Œæå–è¡¨å
     getWord(0, check_index);
-    //µÃµ½±íµÄÃû×Ö
     table_name = getWord(check_index + 1, check_index);
-    //³öÏÖ¶àÓàµÄ×Ö·û´®£¬¸ñÊ½´íÎó
     if (query[check_index + 1] != '\0')
-        throw 1;//ÊäÈë´íÎó
+        throw input_format_error();
     CM.showTable(table_name);
 }
 
+// ===== DELETE FROM <table_name> [WHERE <attr> <op> <value>] =====
 void Interpreter::EXEC_DELETE() {
     API API;
     CatalogManager CM;
@@ -243,13 +448,15 @@ void Interpreter::EXEC_DELETE() {
     std::string table_name;
     std::string attr_name;
     std::string relation;
+    // éªŒè¯FROMå…³é”®å­—
     if (getLower(query, 7).substr(7, 4) != "from")
-        throw 1;
+        throw input_format_error();
+    // "delete from " å…±12ä¸ªå­—ç¬¦
     table_name = getWord(12, check_index);
     if (!CM.hasTable(table_name))
         throw table_not_exist();
 
-    //´¦ÀíÉ¾³ıËùÓĞĞÅÏ¢µÄÇé¿ö
+    // æ²¡æœ‰WHEREæ¡ä»¶æ—¶ï¼Œåˆ é™¤è¡¨ä¸­æ‰€æœ‰è®°å½•
     if (query[check_index + 1] == '\0') {
         attr_name = "";
         API.deleteRecord(table_name, attr_name, where_delete);
@@ -257,12 +464,16 @@ void Interpreter::EXEC_DELETE() {
         return;
     }
 
+    // è§£æWHEREæ¡ä»¶
     if (getLower(query, check_index + 1).substr(check_index + 1, 5) != "where")
-        throw 1;//¸ñÊ½´íÎó
+        throw input_format_error();
+    // æå–å±æ€§å
     attr_name = getWord(check_index + 7, check_index);
     if (!CM.hasAttribute(table_name, attr_name))
         throw attribute_not_exist();
+    // æå–å…³ç³»è¿ç®—ç¬¦
     relation = getRelation(check_index + 1, check_index);
+    // å°†å…³ç³»è¿ç®—ç¬¦å­—ç¬¦ä¸²è½¬ä¸ºæšä¸¾å€¼
     if (relation == "<")
         where_delete.relation_character = LESS;
     else if (relation == "< =")
@@ -276,9 +487,11 @@ void Interpreter::EXEC_DELETE() {
     else if (relation == "! =")
         where_delete.relation_character = NOT_EQUAL;
     else
-        throw 1;//¸ñÊ½´íÎó
+        throw input_format_error();
+    // æå–æ¯”è¾ƒå€¼
     std::string value_delete = getWord(check_index + 1, check_index);
 
+    // æ ¹æ®å±æ€§ç±»å‹è§£ææ¯”è¾ƒå€¼
     Attribute tmp_attr = CM.getAttribute(table_name);
     for (int i = 0; i < tmp_attr.num; i++)
     {
@@ -286,29 +499,33 @@ void Interpreter::EXEC_DELETE() {
             where_delete.data.type = tmp_attr.type[i];
             switch (where_delete.data.type) {
             case -1:
+                // intç±»å‹ï¼šå°†å­—ç¬¦ä¸²è½¬ä¸ºæ•´æ•°
                 try {
                     where_delete.data.datai = stringToNum<int>(value_delete);
                 }
                 catch (...) {
-                    throw data_type_conflict();//×ª»»Ê§°Ü
+                    throw data_type_conflict();
                 }
                 break;
             case 0:
+                // floatç±»å‹ï¼šå°†å­—ç¬¦ä¸²è½¬ä¸ºæµ®ç‚¹æ•°
                 try {
                     where_delete.data.dataf = stringToNum<float>(value_delete);
                 }
                 catch (...) {
-                    throw data_type_conflict();//×ª»»Ê§°Ü
+                    throw data_type_conflict();
                 }
                 break;
             default:
+                // stringç±»å‹ï¼šéœ€è¦ç”¨å¼•å·åŒ…å›´
                 try {
                     if (!(value_delete[0] == '\'' && value_delete[value_delete.length() - 1] == '\'') && !(value_delete[0] == '"' && value_delete[value_delete.length() - 1] == '"'))
-                        throw 1;//¸ñÊ½²»ÕıÈ·
+                        throw input_format_error();
+                    // å»æ‰é¦–å°¾å¼•å·
                     where_delete.data.datas = value_delete.substr(1, value_delete.length() - 2);
                 }
                 catch (...) {
-                    throw data_type_conflict();//×ª»»Ê§°Ü
+                    throw data_type_conflict();
                 }
                 break;
             }
@@ -319,6 +536,7 @@ void Interpreter::EXEC_DELETE() {
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== INSERT INTO <table_name> VALUES (<value1>, <value2>, ...) =====
 void Interpreter::EXEC_INSERT() {
     API API;
     CatalogManager CM;
@@ -326,72 +544,83 @@ void Interpreter::EXEC_INSERT() {
     int check_index;
     Tuple tuple_insert;
     Attribute attr_exist;
+    // éªŒè¯INTOå…³é”®å­—
     if (getLower(query, 7).substr(7, 4) != "into")
         throw input_format_error();
+    // "insert into " å…±12ä¸ªå­—ç¬¦
     table_name = getWord(12, check_index);
+    // éªŒè¯VALUESå…³é”®å­—
     if (getLower(query, check_index + 1).substr(check_index + 1, 6) != "values")
         throw input_format_error();
     check_index += 8;
+    // éªŒè¯å·¦æ‹¬å·
     if (query[check_index] != '(')
         throw input_format_error();
     if (!CM.hasTable(table_name))
         throw table_not_exist();
+    // è·å–è¡¨çš„å±æ€§ä¿¡æ¯ï¼Œç”¨äºç±»å‹æ£€æŸ¥
     attr_exist = CM.getAttribute(table_name);
     check_index--;
     int num_of_insert = 0;
-    //¶ÔÀ¨ºÅÄÚµÄËùÓĞÔªËØ½øĞĞ±éÀú
+    // é€ä¸ªè§£ææ‹¬å·ä¸­çš„å€¼
     while (query[check_index + 1] != '\0' && query[check_index + 1] != ')') {
         if (num_of_insert >= attr_exist.num)
-            throw 1;//ÊôĞÔÊı²»Æ¥Åä
+            throw input_format_error();
         check_index += 3;
         std::string value_insert = getWord(check_index, check_index);
         Data insert_data;
         insert_data.type = attr_exist.type[num_of_insert];
+        // æ ¹æ®å±æ€§ç±»å‹è§£ææ’å…¥å€¼
         switch (attr_exist.type[num_of_insert]) {
         case -1:
+            // intç±»å‹
             try {
                 insert_data.datai = stringToNum<int>(value_insert);
             }
             catch (...) {
-                throw data_type_conflict();//×ª»»Ê§°Ü
+                throw data_type_conflict();
             }
             break;
         case 0:
+            // floatç±»å‹
             try {
                 insert_data.dataf = stringToNum<float>(value_insert);
             }
             catch (...) {
-                throw data_type_conflict();//×ª»»Ê§°Ü
+                throw data_type_conflict();
             }
             break;
         default:
+            // stringç±»å‹ï¼šéœ€è¦ç”¨å¼•å·åŒ…å›´ï¼Œä¸”é•¿åº¦ä¸èƒ½è¶…è¿‡å®šä¹‰çš„charé•¿åº¦
             try {
                 if (!(value_insert[0] == '\'' && value_insert[value_insert.length() - 1] == '\'') && !(value_insert[0] == '"' && value_insert[value_insert.length() - 1] == '"'))
-                    throw input_format_error();//¸ñÊ½²»ÕıÈ·
+                    throw input_format_error();
                 if (value_insert.length() - 1 > attr_exist.type[num_of_insert])
-                    throw input_format_error();//³¤¶È³¬¹ıÏŞÖÆ
+                    throw input_format_error();
+                // å»æ‰é¦–å°¾å¼•å·
                 insert_data.datas = value_insert.substr(1, value_insert.length() - 2);
             }
             catch (input_format_error error) {
                 throw input_format_error();
             }
             catch (...) {
-                throw data_type_conflict();//×ª»»Ê§°Ü
+                throw data_type_conflict();
             }
             break;
         }
         tuple_insert.addData(insert_data);
         num_of_insert++;
     }
+    // éªŒè¯å³æ‹¬å·å’Œæ’å…¥å€¼çš„æ•°é‡
     if (query[check_index + 1] == '\0')
-        throw input_format_error();//¸ñÊ½´íÎó
+        throw input_format_error();
     if (num_of_insert != attr_exist.num)
-        throw input_format_error();//²åÈëµÄÊıÁ¿²»ÕıÈ·
+        throw input_format_error();
     API.insertRecord(table_name, tuple_insert);
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
-//»¹ĞèÒªtableµÄÏÔÊ¾
+// ===== SELECT <attr_list|*> FROM <table_name> [WHERE ... [AND|OR ...]] =====
 void Interpreter::EXEC_SELECT() {
     API API;
     CatalogManager CM;
@@ -404,15 +633,19 @@ void Interpreter::EXEC_SELECT() {
     Where tmp_where;
     std::string relation;
     Table output_table;
+    // op: 0=OR, 1=ANDï¼Œé»˜è®¤ä¸ºORï¼ˆå•æ¡ä»¶æ—¶æ— å½±å“ï¼‰
     char op = 0;
     int check_index;
-    int flag = 0;//ÅĞ¶ÏÊÇ·ñÎªselect *
+    int flag = 0;
+    // è§£æSELECTåé¢çš„å±æ€§åˆ—è¡¨æˆ–*
     if (getWord(7, check_index) == "*")
     {
+        // SELECT * è¡¨ç¤ºæŸ¥è¯¢æ‰€æœ‰å±æ€§
         flag = 1;
         check_index++;
     }
     else {
+        // SELECT attr1, attr2, ... è§£æé€—å·åˆ†éš”çš„å±æ€§ååˆ—è¡¨
         check_index = 7;
         while (1) {
             attr_name.push_back(getWord(check_index, check_index));
@@ -422,37 +655,46 @@ void Interpreter::EXEC_SELECT() {
                 check_index += 2;
         }
     }
+    // éªŒè¯FROMå…³é”®å­—
     if (getLower(query, check_index).substr(check_index, 4) != "from")
-        throw input_format_error();//¸ñÊ½´íÎó
+        throw input_format_error();
     check_index += 5;
     table_name = getWord(check_index, check_index);
     if (!CM.hasTable(table_name))
         throw table_not_exist();
     Attribute tmp_attr = CM.getAttribute(table_name);
+    // éªŒè¯æ‰€æœ‰æŸ¥è¯¢çš„å±æ€§æ˜¯å¦å­˜åœ¨
     if (!flag) {
-        for (int index = 0; index < attr_name.size(); index++) {
+        for (int index = 0; index < (int)attr_name.size(); index++) {
             if (!CM.hasAttribute(table_name, attr_name[index]))
                 throw attribute_not_exist();
         }
     }
     else {
+        // SELECT * æ—¶ï¼Œå°†æ‰€æœ‰å±æ€§ååŠ å…¥åˆ—è¡¨
         for (int index = 0; index < tmp_attr.num; index++) {
             attr_name.push_back(tmp_attr.name[index]);
         }
     }
     check_index++;
     if (query[check_index] == '\0')
+        // æ²¡æœ‰WHEREæ¡ä»¶ï¼Œè¿”å›å…¨è¡¨
         output_table = API.selectRecord(table_name, target_name, where_select, op);
     else {
+        // è§£æWHEREæ¡ä»¶
         if (getLower(query, check_index).substr(check_index, 5) != "where")
-            throw input_format_error();//¸ñÊ½´íÎó
+            throw input_format_error();
         check_index += 6;
+        // å¾ªç¯è§£æå¤šä¸ªWHEREæ¡ä»¶ï¼ˆç”¨AND/ORè¿æ¥ï¼‰
         while (1) {
+            // æå–æ¡ä»¶ä¸­çš„å±æ€§å
             tmp_target_name = getWord(check_index, check_index);
             if (!CM.hasAttribute(table_name, tmp_target_name))
                 throw attribute_not_exist();
             target_name.push_back(tmp_target_name);
+            // æå–å…³ç³»è¿ç®—ç¬¦
             relation = getRelation(check_index + 1, check_index);
+            // è½¬æ¢å…³ç³»è¿ç®—ç¬¦ä¸ºæšä¸¾å€¼
             if (relation == "<")
                 tmp_where.relation_character = LESS;
             else if (relation == "< =")
@@ -466,8 +708,10 @@ void Interpreter::EXEC_SELECT() {
             else if (relation == "! =")
                 tmp_where.relation_character = NOT_EQUAL;
             else
-                throw input_format_error();//¸ñÊ½´íÎó
+                throw input_format_error();
+            // æå–æ¯”è¾ƒå€¼
             tmp_value = getWord(check_index + 1, check_index);
+            // æ ¹æ®å±æ€§ç±»å‹è§£ææ¯”è¾ƒå€¼
             for (int i = 0; i < tmp_attr.num; i++)
             {
                 if (tmp_target_name == tmp_attr.name[i]) {
@@ -478,7 +722,7 @@ void Interpreter::EXEC_SELECT() {
                             tmp_where.data.datai = stringToNum<int>(tmp_value);
                         }
                         catch (...) {
-                            throw data_type_conflict();//×ª»»Ê§°Ü
+                            throw data_type_conflict();
                         }
                         break;
                     case 0:
@@ -486,20 +730,20 @@ void Interpreter::EXEC_SELECT() {
                             tmp_where.data.dataf = stringToNum<float>(tmp_value);
                         }
                         catch (...) {
-                            throw data_type_conflict();//×ª»»Ê§°Ü
+                            throw data_type_conflict();
                         }
                         break;
                     default:
                         try {
-                            if (!(tmp_value[0] != '\'' && tmp_value[tmp_value.length() - 1] != '\'') && !(tmp_value[0] != '"' && tmp_value[tmp_value.length() - 1] != '"'))
-                                throw input_format_error();//¸ñÊ½²»ÕıÈ·
+                            if (!(tmp_value[0] == '\'' && tmp_value[tmp_value.length() - 1] == '\'') && !(tmp_value[0] == '"' && tmp_value[tmp_value.length() - 1] == '"'))
+                                throw input_format_error();
                             tmp_where.data.datas = tmp_value.substr(1, tmp_value.length() - 2);
                         }
                         catch (input_format_error error) {
                             throw input_format_error();
                         }
                         catch (...) {
-                            throw data_type_conflict();//×ª»»Ê§°Ü
+                            throw data_type_conflict();
                         }
                     }
                     break;
@@ -507,14 +751,16 @@ void Interpreter::EXEC_SELECT() {
             }
 
             where_select.push_back(tmp_where);
+            // æ£€æŸ¥æ˜¯å¦è¿˜æœ‰AND/ORè¿æ¥çš„æ¡ä»¶
             if (query[check_index + 1] == '\0')
                 break;
-            else if (getLower(query, check_index + 1).substr(check_index + 1, 3) == "and")//¼ÙÉè¹ØÏµÁ´½ÓÊÇand
+            else if (getLower(query, check_index + 1).substr(check_index + 1, 3) == "and")
                 op = 1;
-            else if (getLower(query, check_index + 1).substr(check_index + 1, 2) == "or")//¼ÙÉè¹ØÏµÁ´½ÓÊÇor
+            else if (getLower(query, check_index + 1).substr(check_index + 1, 2) == "or")
                 op = 0;
             else
-                throw 1;
+                throw input_format_error();
+            // è·³è¿‡AND/ORå…³é”®å­—
             getWord(check_index + 1, check_index);
             check_index++;
         }
@@ -522,16 +768,16 @@ void Interpreter::EXEC_SELECT() {
         output_table = API.selectRecord(table_name, target_name, where_select, op);
     }
 
-    //ÒÔÏÂÊÇÊä³öº¯Êı
-
+    // ===== æ ¼å¼åŒ–è¾“å‡ºæŸ¥è¯¢ç»“æœ =====
     Attribute attr_record = output_table.attr_;
+    // useæ•°ç»„è®°å½•æ¯ä¸ªè¾“å‡ºåˆ—åœ¨å±æ€§è¡¨ä¸­çš„å®é™…ç´¢å¼•ä½ç½®
     int use[32] = { 0 };
     if (attr_name.size() == 0) {
         for (int i = 0; i < attr_record.num; i++)
             use[i] = i;
     }
     else {
-        for (int i = 0; i < attr_name.size(); i++)
+        for (int i = 0; i < (int)attr_name.size(); i++)
             for (int j = 0; j < attr_record.num; j++) {
                 if (attr_record.name[j] == attr_name[i])
                 {
@@ -540,65 +786,69 @@ void Interpreter::EXEC_SELECT() {
                 }
             }
     }
+    // è®¡ç®—æ¯åˆ—çš„æœ€å¤§å®½åº¦ç”¨äºå¯¹é½
     std::vector<Tuple> output_tuple = output_table.getTuple();
     int longest = -1;
-    for (int index = 0; index < attr_name.size(); index++) {
+    for (int index = 0; index < (int)attr_name.size(); index++) {
         if ((int)attr_record.name[use[index]].length() > longest)
             longest = (int)attr_record.name[use[index]].length();
     }
-    for (int index = 0; index < attr_name.size(); index++) {
+    for (int index = 0; index < (int)attr_name.size(); index++) {
         int type = attr_record.type[use[index]];
         if (type == -1) {
-            for (int i = 0; i < output_tuple.size(); i++) {
+            for (int i = 0; i < (int)output_tuple.size(); i++) {
                 if (longest < getBits(output_tuple[i].getData()[use[index]].datai)) {
                     longest = getBits(output_tuple[i].getData()[use[index]].datai);
                 }
             }
         }
         if (type == 0) {
-            for (int i = 0; i < output_tuple.size(); i++) {
+            for (int i = 0; i < (int)output_tuple.size(); i++) {
                 if (longest < getBits(output_tuple[i].getData()[use[index]].dataf)) {
                     longest = getBits(output_tuple[i].getData()[use[index]].dataf);
                 }
             }
         }
         if (type > 0) {
-            for (int i = 0; i < output_tuple.size(); i++) {
-                if (longest < output_tuple[i].getData()[use[index]].datas.length()) {
+            for (int i = 0; i < (int)output_tuple.size(); i++) {
+                if (longest < (int)output_tuple[i].getData()[use[index]].datas.length()) {
                     longest = (int)output_tuple[i].getData()[use[index]].datas.length();
                 }
             }
         }
     }
     longest += 1;
-    for (int index = 0; index < attr_name.size(); index++) {
-        if (index != attr_name.size() - 1) {
-            for (int i = 0; i < (longest - attr_record.name[use[index]].length()) / 2; i++)
+    // è¾“å‡ºè¡¨å¤´
+    for (int index = 0; index < (int)attr_name.size(); index++) {
+        if (index != (int)attr_name.size() - 1) {
+            for (int i = 0; i < (longest - (int)attr_record.name[use[index]].length()) / 2; i++)
                 printf(" ");
             printf("%s", attr_record.name[use[index]].c_str());
-            for (int i = 0; i < longest - (longest - attr_record.name[use[index]].length()) / 2 - attr_record.name[use[index]].length(); i++)
+            for (int i = 0; i < longest - (longest - (int)attr_record.name[use[index]].length()) / 2 - (int)attr_record.name[use[index]].length(); i++)
                 printf(" ");
             printf("|");
         }
         else {
-            for (int i = 0; i < (longest - attr_record.name[use[index]].length()) / 2; i++)
+            for (int i = 0; i < (longest - (int)attr_record.name[use[index]].length()) / 2; i++)
                 printf(" ");
             printf("%s", attr_record.name[use[index]].c_str());
-            for (int i = 0; i < longest - (longest - attr_record.name[use[index]].length()) / 2 - attr_record.name[use[index]].length(); i++)
+            for (int i = 0; i < longest - (longest - (int)attr_record.name[use[index]].length()) / 2 - (int)attr_record.name[use[index]].length(); i++)
                 printf(" ");
             printf("\n");
         }
     }
-    for (int index = 0; index < attr_name.size() * (longest + 1); index++) {
+    // è¾“å‡ºåˆ†éš”çº¿
+    for (int index = 0; index < (int)attr_name.size() * (longest + 1); index++) {
         std::cout << "-";
     }
     std::cout << std::endl;
-    for (int index = 0; index < output_tuple.size(); index++) {
-        for (int i = 0; i < attr_name.size(); i++)
+    // è¾“å‡ºæ¯ä¸€è¡Œæ•°æ®
+    for (int index = 0; index < (int)output_tuple.size(); index++) {
+        for (int i = 0; i < (int)attr_name.size(); i++)
         {
             switch (output_tuple[index].getData()[use[i]].type) {
             case -1:
-                if (i != attr_name.size() - 1) {
+                if (i != (int)attr_name.size() - 1) {
                     int len = output_tuple[index].getData()[use[i]].datai;
                     len = getBits(len);
                     for (int i = 0; i < (longest - len) / 2; i++)
@@ -620,7 +870,7 @@ void Interpreter::EXEC_SELECT() {
                 }
                 break;
             case 0:
-                if (i != attr_name.size() - 1) {
+                if (i != (int)attr_name.size() - 1) {
                     float num = output_tuple[index].getData()[use[i]].dataf;
                     int len = getBits(num);
                     for (int i = 0; i < (longest - len) / 2; i++)
@@ -643,8 +893,8 @@ void Interpreter::EXEC_SELECT() {
                 break;
             default:
                 std::string tmp = output_tuple[index].getData()[use[i]].datas;
-                if (i != attr_name.size() - 1) {
-                    for (int i = 0; i < (longest - tmp.length()) / 2; i++)
+                if (i != (int)attr_name.size() - 1) {
+                    for (int i = 0; i < (longest - (int)tmp.length()) / 2; i++)
                         printf(" ");
                     printf("%s", tmp.c_str());
                     for (int i = 0; i < longest - (longest - (int)tmp.length()) / 2 - (int)tmp.length(); i++)
@@ -652,8 +902,7 @@ void Interpreter::EXEC_SELECT() {
                     printf("|");
                 }
                 else {
-                    std::string tmp = output_tuple[index].getData()[i].datas;
-                    for (int i = 0; i < (longest - tmp.length()) / 2; i++)
+                    for (int i = 0; i < (longest - (int)tmp.length()) / 2; i++)
                         printf(" ");
                     printf("%s", tmp.c_str());
                     for (int i = 0; i < longest - (longest - (int)tmp.length()) / 2 - (int)tmp.length(); i++)
@@ -666,44 +915,42 @@ void Interpreter::EXEC_SELECT() {
     }
 }
 
+// ===== CREATE TABLE <name> (<attr1> <type1> [unique], ..., PRIMARY KEY(<attr>)) =====
 void Interpreter::EXEC_CREATE_TABLE() {
-    //ÊäÈë±íÃû
     std::string table_name;
-    //¶¨Î»ÊôĞÔÎ»ÖÃ
     int check_index;
+    // "create table " å…±13ä¸ªå­—ç¬¦
     table_name = getWord(13, check_index);
-    //±íµÄË÷Òı³õÊ¼»¯
     Index index_create;
     index_create.num = 0;
-    //ÉèÖÃÊôĞÔ
     Attribute attr_create;
     std::string attr_name;
     int primary = -1;
     int attr_num = 0;
+    // å¾ªç¯è§£ææ‹¬å·ä¸­çš„å±æ€§å®šä¹‰
     while (1) {
         check_index += 3;
-        //Èç¹ûÒÑ¾­±éÀúÍêstringÁË£¬¾ÍÍË³ö
         if (query[check_index] == '\0') {
             if (query[check_index - 2] == '\0')
-                throw 1;
+                throw input_format_error();
             else
                 break;
         }
-        //µÃµ½Ò»¸öÊôĞÔµÄÃû×Ö
         attr_name = getWord(check_index, check_index);
-        //¼ì²âÕâ¸öÊôĞÔÊÇ²»ÊÇprimary
         std::string check_primary(attr_name);
         check_primary = getLower(check_primary, 0);
+        // æ£€æŸ¥æ˜¯å¦æ˜¯PRIMARY KEYå®šä¹‰
         if (check_primary == "primary") {
             int tmp_end = check_index;
             std::string check_key = getWord(tmp_end + 1, tmp_end);
-            //ÔÙ¼ì²é½ÓÏÂÀ´µÄ¹Ø¼ü×ÖÊÇ²»ÊÇkey£¬Èç¹û²»ÊÇ£¬Ôò½«primary¿´×÷ÊôĞÔÃû×Ö
+            // å°†KEYå…³é”®å­—è½¬ä¸ºå°å†™åå†æ¯”è¾ƒï¼Œæ”¯æŒKEY/Key/keyç­‰å†™æ³•
+            check_key = getLower(check_key, 0);
             if (check_key != "key") {
                 attr_create.name[attr_num] = attr_name;
                 break;
             }
-            //ÉèÖÃÊôĞÔµÄprimary
             else {
+                // è§£æPRIMARY KEY(attr_name)
                 check_index = tmp_end + 3;
                 std::string unique_name = getWord(check_index, check_index);
                 int hasset = 1;
@@ -717,76 +964,79 @@ void Interpreter::EXEC_CREATE_TABLE() {
                     }
                 }
                 if (hasset)
-                    throw 1;
+                    throw input_format_error();
                 continue;
             }
         }
-        //Èç¹û²»ÊÇprimary key£¬¾ÍÖ±½Ó°ÑÕâ¸öÊôĞÔÃû×Ö²åÈë½øÈ¥
         else
             attr_create.name[attr_num] = attr_name;
+        // è§£æå±æ€§ç±»å‹
         check_index++;
-        //µÃµ½Ò»¸öÊôĞÔµÄÀàĞÍ
         attr_create.type[attr_num] = getType(check_index, check_index);
         attr_create.unique[attr_num] = false;
-        //ÅĞ¶ÏÖ®ºóÓĞÃ»ÓĞunique¹Ø¼ü´Ê
+        // æ£€æŸ¥æ˜¯å¦æœ‰uniqueå…³é”®å­—
         if (query[check_index + 1] == 'u' || query[check_index + 1] == 'U') {
             query = getLower(query, 0);
-            //Èç¹ûÓĞ£¬ÔòÉèÎªunique£¬Èç¹û¿ªÍ·Îªu£¬µ«ÊÇ²»Îªunique£¬ÄÇ¾ÍÊÇÒ»¸ö´íÎó
             if (getWord(check_index + 1, check_index) == "unique") {
                 attr_create.unique[attr_num] = true;
             }
             else
-                throw 1;
+                throw input_format_error();
         }
-        //¸üĞÂÊôĞÔµÄÊıÁ¿
         attr_num++;
         attr_create.num = attr_num;
     }
-    //µ÷ÓÃCatalogManager£¬½«±íµÄĞÅÏ¢²åÈë½øÈ¥
     API API;
     API.createTable(table_name, attr_create, primary, index_create);
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
-
-
+// ===== DROP TABLE <name> =====
 void Interpreter::EXEC_DROP_TABLE() {
     API API;
     std::string table_name;
     int check_index;
-    //µÃµ½tableµÄÃû×Ö
+    // "drop table " å…±11ä¸ªå­—ç¬¦
     table_name = getWord(11, check_index);
-    //Èç¹ûtableµÄÃû×ÖÖ®ºóÓĞ¶àÓà×Ö·û´®£¬ÔòÊÇ¸ñÊ½´íÎó
     if (query[check_index + 1] != '\0')
-        throw 1;//ÊäÈë´íÎó
+        throw input_format_error();
     API.dropTable(table_name);
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
-//µÃµ½Ò»¸öÎ»ÖÃµÄÊôĞÔÀàĞÍ
-int Interpreter::getType(int pos, int& end_pos) {
+// ä»queryä¸­è§£æå±æ€§ç±»å‹
+// è¿”å›å€¼ï¼š-1=int, 0=float, >0=char(n)+1ï¼ˆcharç±»å‹å­˜å‚¨æ—¶+1ä»¥åŒºåˆ†floatçš„0ï¼‰
+// å¯¹äºcharç±»å‹ï¼Œè¿˜éœ€è¦è·³è¿‡æ‹¬å·ä¸­çš„é•¿åº¦å‚æ•°
+short Interpreter::getType(int pos, int& end_pos) {
     std::string type = getWord(pos, end_pos);
+    // å°†ç±»å‹å…³é”®å­—ç»Ÿä¸€è½¬ä¸ºå°å†™ï¼Œæ”¯æŒå¤§å°å†™æ— å…³åŒ¹é…
+    for (int i = 0; i < (int)type.length(); i++)
+        if (type[i] >= 'A' && type[i] <= 'Z')
+            type[i] += 32;
+
     if (type == "int")
         return -1;
     else if (type == "float")
         return 0;
-    else if (type == "char") {
+    else if (type == "char" || type == "varchar") {
+        // char(n)å’Œvarchar(n)ç±»å‹ï¼šè·³è¿‡å·¦æ‹¬å·ï¼Œè¯»å–é•¿åº¦ï¼Œè·³è¿‡å³æ‹¬å·
         end_pos += 3;
         std::string length = getWord(end_pos, end_pos);
         end_pos += 2;
+        // è¿”å›é•¿åº¦+1ï¼Œå› ä¸º0å·²è¢«floatå ç”¨ï¼Œéœ€è¦+1æ¥åŒºåˆ†
         return atoi(length.c_str()) + 1;
     }
-    throw 1;
+    throw input_format_error();
 }
 
-//È¡³öÒ»¸öµ¥´Ê£¬Í¬Ê±½«end_pos¸üĞÂµ½µ¥´ÊºóµÄÄÇ¸ö¿Õ¸ñµÄÎ»ÖÃ´¦
+// ä»queryçš„æŒ‡å®šä½ç½®æå–ä¸€ä¸ªå•è¯ï¼ˆä»¥ç©ºæ ¼æˆ–\0ä¸ºåˆ†éš”ç¬¦ï¼‰
+// end_posè¿”å›å•è¯ç»“æŸä½ç½®
 std::string Interpreter::getWord(int pos, int& end_pos) {
     std::string PartWord = "";
     for (int pos1 = pos; pos1 < (int)query.length(); pos1++) {
         if (query[pos1] == ' ' || query[pos1] == '\0')
         {
             PartWord = query.substr(pos, pos1 - pos);
-            //std::cout<<PartWord<<std::endl;
             end_pos = pos1;
             return PartWord;
         }
@@ -794,7 +1044,8 @@ std::string Interpreter::getWord(int pos, int& end_pos) {
     return PartWord;
 }
 
-//µÃµ½Ò»¸ö×Ö·ûµÄĞ¡Ğ´ĞÎÊ½
+// å°†å­—ç¬¦ä¸²ä¸­ä»æŒ‡å®šä½ç½®å¼€å§‹åˆ°ç©ºæ ¼/ç»“å°¾çš„å•è¯è½¬ä¸ºå°å†™
+// ç”¨äºSQLå…³é”®å­—çš„å¤§å°å†™æ— å…³åŒ¹é…
 std::string Interpreter::getLower(std::string str, int pos) {
     for (int index = pos;; index++) {
         if (str[index] == ' ' || str[index] == '\0')
@@ -805,7 +1056,8 @@ std::string Interpreter::getLower(std::string str, int pos) {
     return str;
 }
 
-//µÃµ½Ò»¸ö¹ØÏµ·ûºÅµÄ×Ö·û´®£¬Èç¹û¹ØÏµ·ûºÅÓĞÁ½¸ö×Ö·û£¬Ôò×Ö·ûÖĞ»á²úÉúÒ»¸ö¿Õ¸ñ£¬Èç"< ="
+// ä»queryä¸­æå–å…³ç³»è¿ç®—ç¬¦ï¼ˆ<, <=, =, >=, >, !=ï¼‰
+// æ³¨æ„ï¼šç»è¿‡Normalizeå¤„ç†åï¼Œ<=å˜æˆ< =ï¼Œ>=å˜æˆ> =ï¼Œ!=å˜æˆ! =
 std::string Interpreter::getRelation(int pos, int& end_pos) {
     std::string PartWord = "";
     for (int pos1 = pos; pos1 < (int)query.length(); pos1++) {
@@ -814,7 +1066,6 @@ std::string Interpreter::getRelation(int pos, int& end_pos) {
         if (query[pos1] != '<' && query[pos1] != '>' && query[pos1] != '=' && query[pos1] != '!')
         {
             PartWord = query.substr(pos, pos1 - pos - 1);
-            //std::cout<<PartWord<<std::endl;
             end_pos = pos1 - 1;
             return PartWord;
         }
@@ -822,7 +1073,7 @@ std::string Interpreter::getRelation(int pos, int& end_pos) {
     return PartWord;
 }
 
-//¸ù¾İ³ı·¨µÃµ½ÕûĞÎµÄÊı×ÖµÄ³¤¶È
+// è®¡ç®—æ•´æ•°çš„æ˜¾ç¤ºä½æ•°ï¼ˆç”¨äºSELECTç»“æœå¯¹é½ï¼‰
 int Interpreter::getBits(int num) {
     int bit = 0;
     if (num == 0)
@@ -838,7 +1089,7 @@ int Interpreter::getBits(int num) {
     return bit;
 }
 
-//¸ù¾İ³ı·¨µÃµ½Ğ¡ÊıµÄÊı×ÖµÄ³¤¶È
+// è®¡ç®—æµ®ç‚¹æ•°çš„æ˜¾ç¤ºä½æ•°ï¼ˆæ•´æ•°éƒ¨åˆ†+3ä½å°æ•°éƒ¨åˆ†ï¼‰
 int Interpreter::getBits(float num) {
     int bit = 0;
     if ((int)num == 0)
@@ -847,10 +1098,10 @@ int Interpreter::getBits(float num) {
         bit++;
         num = -num;
     }
-    int integer_part = num;
+    int integer_part = (int)num;
     while (integer_part != 0) {
         bit++;
         integer_part /= 10;
     }
-    return bit + 3;//ÎªÁË±£ÁôĞ¡ÊıµãµÄºó¼¸Î»
+    return bit + 3;
 }

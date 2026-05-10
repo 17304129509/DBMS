@@ -1,6 +1,6 @@
 #include "basicType.h"
 
-Tuple::Tuple(const Tuple &tuple_in){
+Tuple::Tuple(const Tuple &tuple_in) : isDeleted_(tuple_in.isDeleted_) {
     for(int index=0;index<tuple_in.data_.size();index++)
     {
         this->data_.push_back(tuple_in.data_[index]);
@@ -53,7 +53,7 @@ Table::Table(const Table &table_in){
     this->attr_=table_in.attr_;
     this->index_=table_in.index_;
     this->title_=table_in.title_;
-    for(int index=0;index<tuple_.size();index++)
+    for(int index=0;index<table_in.tuple_.size();index++)
         this->tuple_.push_back(table_in.tuple_[index]);
 }
 

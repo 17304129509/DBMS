@@ -1,124 +1,80 @@
+
+
 #ifndef _INTERPRETER_H_
-#define	_INTERPRETER_H_ 1
+#define _INTERPRETER_H_ 1
 
 #include <iostream>
-#include <sstream>
 #include <string>
-#include <cmath>
-#include <fstream>
-#include "catalog_manager.h"
-#include "api.h"
+#include <cstring>
+#include <vector>
 #include "basicType.h"
+#include "api.h"
+#include "exception.h"
+#include "const.h"
+#include "template_function.h"
 
 class Interpreter {
 public:
     Interpreter();
-
-    //¹¦ÄÜ£º»ñÈ¡Ò»ĞĞÊäÈëµÄĞÅÏ¢£¬²¢½«ÊäÈëµÄ¸ñÊ½¹æ·¶»¯
-    //Òì³££ºÎŞÒì³£
+    // è¾“å…¥ï¼švoid
+    // è¾“å‡ºï¼švoid
+    // åŠŸèƒ½ï¼šä»æ ‡å‡†è¾“å…¥è·å–SQLæŸ¥è¯¢
     void getQuery();
-    //¹¦ÄÜ£º¶Ô×Ö·û´®½øĞĞ³õ²½½âÎö£¬ÅĞ¶ÏÕâ¸ö×Ö·û´®µÄ¹¦ÄÜ
-    //Òì³££ºÈç¹û³öÏÖÊäÈëµÄ¹Ø¼ü×Ö²»´æÔÚ£¬ÔòÅ×³öÒì³£input_format_error
+    // è¾“å…¥ï¼švoid
+    // è¾“å‡ºï¼švoid
+    // åŠŸèƒ½ï¼šæ‰§è¡ŒSQLæŸ¥è¯¢
     void EXEC();
-    //ÊäÈë£ºselect last_name,first_name,birth,state from president where t1<10 and t2>20 ;
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£º½øĞĞÑ¡Ôñ²Ù×÷£¬Ö§³Öµ¥±í¶àÔ¼Êø
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_error
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    //Èç¹ûÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£
-    //Èç¹ûWhereÌõ¼şÖĞµÄÁ½¸öÊı¾İÀàĞÍ²»Æ¥Åä£¬Å×³ödata_type_conflictÒì³£
-    void EXEC_SELECT();
-    //ÊäÈë£ºdrop table t1;
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£ºÉ¾³ı±ít1
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_error
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    void EXEC_DROP_TABLE();
-    //ÊäÈë£ºdrop index ID_index on t1;
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£ºÔÚ±ít1ÖĞÉ¾³ıÒ»¸öÃû×Ö½ĞID_indexµÄË÷Òı
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_errorÒì³£
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    //Èç¹û¶ÔÓ¦ÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£
-    //Èç¹û¶ÔÓ¦ÊôĞÔÃ»ÓĞË÷Òı£¬Å×³öindex_not_existÒì³£
-    void EXEC_DROP_INDEX();
-    //ÊäÈë£ºcreate table T1(
-    //            NAME char(32),
-    //            ID int unique,
-    //            SCORE float,
-    //            primary key (ID));
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£ºÔÚÊı¾İ¿âÖĞ²åÈëÒ»¸ö±íµÄÔªĞÅÏ¢
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_errorÒì³£
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    void EXEC_CREATE_TABLE();
-    //ÊäÈë£ºcreate index ID_index on t1 (id);
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£ºÔÚ±íÖĞ²åÈëÒ»¸öÃû×Ö½ĞID_indexµÄË÷Òı£¬Æä¶ÔÓ¦ÊôĞÔÎªID
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_errorÒì³£
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    //Èç¹û¶ÔÓ¦ÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£
-    //Èç¹û¶ÔÓ¦ÊôĞÔÒÑ¾­ÓĞÁËË÷Òı£¬Å×³öindex_existÒì³£
-    void EXEC_CREATE_INDEX();
-    //ÊäÈë£ºinsert into T1 values('WuZhaoHui',0001,99.99);
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£ºÏòT1ÄÚ²åÈëÖµµÄĞÅÏ¢
-    //Òì³££º
-    void EXEC_INSERT();
-    //ÊäÈë£ºdelete from MyClass where id=1;
-    //     delete * from MyClass;
-    //whereÖĞÖ»´æÔÚÒ»ÌõĞÅÏ¢
-    //Êä³ö£ºSuccess»òÕßÒì³£
-    //¹¦ÄÜ£º´ÓMyclassÖĞÉ¾³ıid=1µÄÔª×é
-    //Òì³££º¸ñÊ½´íÎóÔòÅ×³öinput_format_errorÒì³£
-    //Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
-    //Èç¹ûÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£
-    //Èç¹ûWhereÌõ¼şÖĞµÄÁ½¸öÊı¾İÀàĞÍ²»Æ¥Åä£¬Å×³ödata_type_conflictÒì³£
-    void EXEC_DELETE();
-    //ÊäÈë£ºdescribe T1;
-    //     »òÕß desc T1£»
-    //¹¦ÄÜ£ºÊä³ö±íT1µÄËùÓĞÊôĞÔ£¬Ë÷ÒıµÄ»ù±¾ĞÅÏ¢
-    void EXEC_SHOW();
-    //ÊäÈë£ºexit;
-    //¹¦ÄÜ£ºÍË³öÊı¾İ¿â
-    void EXEC_EXIT();
-    //ÊäÈë£ºexecfile ÎÄ¼şÂ·¾¶
-    //¹¦ÄÜ£º¸ù¾İÎÄ¼şÂ·¾¶¶ÁÈ¡ÎÄ¼şĞÅÏ¢£¬²¢ÓÃÓÚÊı¾İ¿âµÄ²Ù×÷
-    void EXEC_FILE();
 
 private:
-    //×Ö·û´®¹æ·¶»¯º¯Êı
-    void Normalize();
-    //´æ·ÅÊäÈëµÄ×Ö·û´®ºÍ¹æ·¶»¯ºóµÄ×Ö·û´®
     std::string query;
-    //ÊäÈë£ºËù¶ÔÓ¦µÄ×Ö·ûµÄ¿ªÍ·Î»ÖÃ£¬ÒıÓÃ´«³ö¸Ã×Ö·ûµÄ½áÎ²Î»ÖÃ
-    //Êä³ö£ºÕâ¸öÎ»ÖÃËù¶ÔÓ¦µÄµ¥´ÊµÄ×Ö·û´®
-    //¹¦ÄÜ£º´ÓqueryÖĞÈ¡×Ö
-    std::string getWord(int pos, int& end_pos);
-    //ÊäÈë£ºËùĞèÒª×ª³ÉĞ¡Ğ´µÄ×Ö·û´®£¬posÎ»ÖÃÎªËù¶ÔÓ¦µÄµ¥´ÊµÄ¿ªÊ¼µÄÎ»ÖÃ
-    //Êä³ö£º½«posÎ»ÖÃµÄµ¥´Ê¸Ä³ÉĞ¡Ğ´ºó£¬Êä³ö¸ü¸ÄºóµÄÍêÕû×Ö·û´®
-    //¹¦ÄÜ£º½«×Ö·û´®strÖĞµÄposÎ»ÖÃ¿ªÍ·µÄµ¥´Ê×ª»¯³ÉĞ¡Ğ´£¬ÓÃÓÚ±ê×¼»¯
-    std::string getLower(std::string str, int pos);
-    //ÊäÈë£ºËù¶ÔÓ¦µÄ×Ö·ûµÄ¿ªÍ·Î»ÖÃ£¬ÒıÓÃ´«³ö¸Ã×Ö·ûµÄ½áÎ²Î»ÖÃ
-    //Êä³ö£ºÕâ¸öÎ»ÖÃËù¶ÔÓ¦µÄ¹ØÏµ·ûºÅ
-    //¹¦ÄÜ£º´ÓqueryÖĞÈ¡³ö¹ØÏµ·ûºÅ
+    // è¾“å…¥ï¼šå­—ç¬¦ä¸²ï¼Œå¼€å§‹ä½ç½®
+    // è¾“å‡ºï¼šå°å†™åŒ–åçš„å­—ç¬¦ä¸²
+    // åŠŸèƒ½ï¼šå°†å­—ç¬¦ä¸²ä¸­ä»æŒ‡å®šä½ç½®å¼€å§‹çš„å•è¯è½¬ä¸ºå°å†™
+    std::string getLower(std::string str, int start);
+    // è¾“å…¥ï¼šå¼€å§‹ä½ç½®ï¼Œç»“æŸä½ç½®ï¼ˆå¼•ç”¨ä¼ å‡ºï¼‰
+    // è¾“å‡ºï¼šæå–çš„å•è¯
+    // åŠŸèƒ½ï¼šä»queryä¸­æå–ä¸€ä¸ªå•è¯
+    std::string getWord(int start, int& end);
+    // è¾“å…¥ï¼švoid
+    // è¾“å‡ºï¼šæ ‡å‡†åŒ–åçš„å­—ç¬¦ä¸²
+    // åŠŸèƒ½ï¼šå¯¹SQLè¯­å¥è¿›è¡Œæ ‡å‡†åŒ–å¤„ç†ï¼ˆæ·»åŠ ç©ºæ ¼ã€å°å†™åŒ–å…³é”®å­—ï¼‰
+    void Normalize();
+    // è¾“å…¥ï¼šå¼€å§‹ä½ç½®ï¼Œç»“æŸä½ç½®ï¼ˆå¼•ç”¨ä¼ å‡ºï¼‰
+    // è¾“å‡ºï¼šå±æ€§ç±»å‹ï¼ˆ-1=int, 0=float, >0=charé•¿åº¦ï¼‰
+    // åŠŸèƒ½ï¼šä»queryä¸­è§£æå±æ€§ç±»å‹
+    short getType(int pos, int& end_pos);
+    // è¾“å…¥ï¼šå¼€å§‹ä½ç½®ï¼Œç»“æŸä½ç½®ï¼ˆå¼•ç”¨ä¼ å‡ºï¼‰
+    // è¾“å‡ºï¼šå…³ç³»è¿ç®—ç¬¦å­—ç¬¦ä¸²
+    // åŠŸèƒ½ï¼šä»queryä¸­æå–å…³ç³»è¿ç®—ç¬¦
     std::string getRelation(int pos, int& end_pos);
-    //ÊäÈë£ºËù¶ÔÓ¦µÄ×Ö·ûµÄ¿ªÍ·Î»ÖÃ£¬ÒıÓÃ´«³ö¸Ã×Ö·ûµÄ½áÎ²Î»ÖÃ
-    //Êä³ö£º·µ»ØÒ»¸öÀàĞÍ£¨-1¡«255£©
-    int getType(int pos, int& end_pos);
-    //Êä³ö£º·µ»ØÒ»¸öÕûÊıµÄÎ»Êı
+    // è¾“å…¥ï¼šæ•´æ•°
+    // è¾“å‡ºï¼šè¯¥æ•´æ•°çš„ä½æ•°
     int getBits(int num);
-    //Êä³ö£º·µ»ØÒ»¸ö¸¡µãÊıµÄÎ»Êı£¨±£ÁôĞ¡Êıµãºó4Î»£©
+    // è¾“å…¥ï¼šæµ®ç‚¹æ•°
+    // è¾“å‡ºï¼šè¯¥æµ®ç‚¹æ•°çš„æ˜¾ç¤ºä½æ•°
     int getBits(float num);
-};
 
-template <class Type>
-Type stringToNum(const std::string& str)
-{
-    std::istringstream iss(str);
-    Type num;
-    iss >> num;
-    return num;
-}
+    // ===== åŸæœ‰çš„SQLå‘½ä»¤æ‰§è¡Œæ–¹æ³• =====
+    void EXEC_SELECT();
+    void EXEC_DROP_TABLE();
+    void EXEC_DROP_INDEX();
+    void EXEC_CREATE_TABLE();
+    void EXEC_CREATE_INDEX();
+    void EXEC_INSERT();
+    void EXEC_DELETE();
+    void EXEC_SHOW();
+    void EXEC_EXIT();
+    void EXEC_FILE();
+
+    // ===== æ–°å¢çš„SQLå‘½ä»¤æ‰§è¡Œæ–¹æ³• =====
+    // CREATE DATABASE <name>
+    void EXEC_CREATE_DATABASE();
+    // DROP DATABASE <name>
+    void EXEC_DROP_DATABASE();
+    // USE <name>
+    void EXEC_USE_DATABASE();
+    // ALTER TABLE <name> ADD/DROP/MODIFY COLUMN ...
+    void EXEC_ALTER_TABLE();
+};
 
 #endif
