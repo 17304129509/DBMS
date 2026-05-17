@@ -126,6 +126,74 @@ int API::deleteRecord(std::string table_name, std::string target_attr, Where whe
     return record_manager.deleteRecord(table_name, target_attr, where);
 }
 
+// 更新记录：修改满足WHERE条件的记录中指定字段的值
+// 实现方式：查询满足条件的记录 → 修改字段值 → 删除旧记录 → 插入新记录
+int API::updateRecord(std::string table_name, std::vector<std::string> attr_names, std::vector<Data> values, std::vector<std::string> target_name, std::vector<Where> where, char op) {
+    RecordManager record_manager;
+    CatalogManager catalog_manager;
+    Attribute attr = catalog_manager.getAttribute(table_name);
+
+    // 获取需要更新的记录
+    Table old_table;
+    if (where.size() == 0) {
+        old_table = record_manager.selectRecord(table_name);
+    } else {
+        old_table = selectRecord(table_name, target_name, where, op);
+    }
+    std::vector<Tuple> old_tuples = old_table.getTuple();
+
+    // 构建属性名到索引的映射
+    int attr_index[32];
+    for (int k = 0; k < (int)attr_names.size(); k++) {
+        attr_index[k] = -1;
+        for (int i = 0; i < attr.num; i++) {
+            if (attr.name[i] == attr_names[k]) {
+                attr_index[k] = i;
+                break;
+            }
+        }
+    }
+
+    // 修改每条记录的指定字段
+    std::vector<Tuple> new_tuples;
+    int count = 0;
+    for (int i = 0; i < (int)old_tuples.size(); i++) {
+        if (old_tuples[i].isDeleted())
+            continue;
+        std::vector<Data> data = old_tuples[i].getData();
+        // 更新指定字段的值
+        for (int k = 0; k < (int)attr_names.size(); k++) {
+            if (attr_index[k] >= 0 && attr_index[k] < (int)data.size()) {
+                data[attr_index[k]] = values[k];
+            }
+        }
+        // 构造新元组
+        Tuple new_tuple;
+        for (int j = 0; j < (int)data.size(); j++) {
+            new_tuple.addData(data[j]);
+        }
+        new_tuples.push_back(new_tuple);
+        count++;
+    }
+
+    // 删除满足条件的旧记录
+    if (where.size() == 0) {
+        record_manager.deleteRecord(table_name);
+    } else {
+        for (int i = 0; i < (int)target_name.size() && i < (int)where.size(); i++) {
+            record_manager.deleteRecord(table_name, target_name[i], where[i]);
+            break;
+        }
+    }
+
+    // 插入修改后的新记录
+    for (int i = 0; i < (int)new_tuples.size(); i++) {
+        record_manager.insertRecord(table_name, new_tuples[i]);
+    }
+
+    return count;
+}
+
 // 查询整张表
 Table API::selectRecord(std::string table_name) {
     RecordManager record_manager;
@@ -233,14 +301,14 @@ bool API::createDatabase(std::string db_name) {
     if (catalog_manager.hasDatabase(db_name))
         throw database_exist();
 
-    // 创建数据库目录结构
+    _mkdir("./database");
     std::string base_path = "./database/" + db_name;
-    _mkdir(base_path.c_str());
+    if (_mkdir(base_path.c_str()) != 0)
+        throw database_exist();
     _mkdir((base_path + "/catalog").c_str());
     _mkdir((base_path + "/data").c_str());
     _mkdir((base_path + "/index").c_str());
 
-    // 创建空的catalog文件（以#结尾表示空目录）
     std::string catalog_path = base_path + "/catalog/catalog_file";
     FILE* f = fopen(catalog_path.c_str(), "w");
     if (f) {

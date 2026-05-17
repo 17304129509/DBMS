@@ -7,6 +7,8 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <sstream>
+#include <iomanip>
 #include "basicType.h"
 #include "api.h"
 #include "exception.h"
@@ -16,14 +18,10 @@
 class Interpreter {
 public:
     Interpreter();
-    // 输入：void
-    // 输出：void
-    // 功能：从标准输入获取SQL查询
     void getQuery();
-    // 输入：void
-    // 输出：void
-    // 功能：执行SQL查询
     void EXEC();
+
+    std::string executeQuery(const std::string& sql);
 
 private:
     std::string query;
@@ -54,7 +52,10 @@ private:
     // 输出：该浮点数的显示位数
     int getBits(float num);
 
-    // ===== 原有的SQL命令执行方法 =====
+    bool isEnd(int pos);
+
+    void EXEC_SHOW_DATABASES();
+
     void EXEC_SELECT();
     void EXEC_DROP_TABLE();
     void EXEC_DROP_INDEX();
@@ -62,6 +63,7 @@ private:
     void EXEC_CREATE_INDEX();
     void EXEC_INSERT();
     void EXEC_DELETE();
+    void EXEC_UPDATE();
     void EXEC_SHOW();
     void EXEC_EXIT();
     void EXEC_FILE();
@@ -75,6 +77,7 @@ private:
     void EXEC_USE_DATABASE();
     // ALTER TABLE <name> ADD/DROP/MODIFY COLUMN ...
     void EXEC_ALTER_TABLE();
+    void EXEC_CREATE_VIEW();
 };
 
 #endif

@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef _API_H_
 #define _API_H_ 1
@@ -50,6 +50,7 @@ public:
     // 功能：删除对应表中所有目标属性值满足Where条件的记录
     // 异常：如果表不存在，抛出table_not_exist异常。如果属性不存在，抛出attribute_not_exist异常。
     int deleteRecord(std::string table_name, std::string target_attr, Where where);
+    int updateRecord(std::string table_name, std::vector<std::string> attr_names, std::vector<Data> values, std::vector<std::string> target_name, std::vector<Where> where, char op);
     // 输入：表名
     // 输出：Table类型对象
     // 功能：返回整张表

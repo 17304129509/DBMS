@@ -1,13 +1,7 @@
-﻿
-//
-#ifndef _TEMPLATE_FUNCTION_H_
+﻿#ifndef _TEMPLATE_FUNCTION_H_
 #define _TEMPLATE_FUNCTION_H_ 1
 #include <sstream>
 
-// 以下是几个模版函数，目的是为了简化record_manager中的代码
-
-// 将任意类型数据转为字符串并返回其长度
-// 用于计算一条记录写入磁盘后占用的字符数
 template <typename T>
 int getDataLength(T data) {
     std::stringstream stream;
@@ -57,6 +51,17 @@ bool isSatisfied(T a, T b, WHERE relation) {
             return false;
     };break;
     }
+    return false;
+}
+
+template <typename T>
+T stringToNum(std::string str) {
+    std::stringstream stream(str);
+    T result;
+    stream >> result;
+    if (stream.fail())
+        throw std::exception();
+    return result;
 }
 
 // 字符串转数值类型（int/float等）
