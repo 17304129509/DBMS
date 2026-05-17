@@ -9,6 +9,8 @@ int getDataLength(T data) {
     return stream.str().length();
 }
 
+// 判断两个值是否满足指定的关系运算（<, <=, =, >=, >, !=）
+// 用于WHERE条件过滤，支持int/float/string类型
 template <typename T>
 bool isSatisfied(T a, T b, WHERE relation) {
     switch (relation) {
@@ -62,6 +64,21 @@ T stringToNum(std::string str) {
     return result;
 }
 
+// 字符串转数值类型（int/float等）
+// 解析失败时抛出异常，用于SQL中数值字面量的解析
+template <typename T>
+T stringToNum(std::string str) {
+    std::stringstream stream(str);
+    T result;
+    stream >> result;
+    if (stream.fail())
+        throw std::exception();
+    return result;
+}
+
+// 将任意类型数据转为字符串后写入字符数组
+// 用于将记录中的各字段值序列化到页面缓冲区
+// offset参数按引用传递，写入后自动后移
 template <typename T>
 void copyString(char* p, int& offset, T data) {
     std::stringstream stream;
