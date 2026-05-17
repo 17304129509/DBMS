@@ -1,56 +1,19 @@
+// interpreter.cpp - SQL解释器
+// 负责读取用户输入的SQL语句，进行词法分析和语法分析，
+// 然后调用API层执行相应的数据库操作。
+//
+// 支持的SQL语句：
+//   DDL: CREATE TABLE, DROP TABLE, CREATE INDEX, DROP INDEX,
+//        CREATE DATABASE, DROP DATABASE, ALTER TABLE
+//   DML: INSERT, DELETE, SELECT
+//   其他: USE, DESCRIBE/DESC, EXIT, EXECFILE
+
 #include "interpreter.h"
-#include "log_manager.h"
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <io.h>
 
 Interpreter::Interpreter() {
 }
 
-static std::string trimTrailing(const std::string& s) {
-    int end = (int)s.length() - 1;
-    while (end >= 0 && (s[end] == ' ' || s[end] == '\t' || s[end] == ';' || s[end] == '\n' || s[end] == '\r'))
-        end--;
-    return s.substr(0, end + 1);
-}
-
-std::string Interpreter::executeQuery(const std::string& sql) {
-    query = sql;
-    if (query.empty()) return "";
-    for (int i = 0; i < (int)query.length(); i++) {
-        if (query[i] == '\n' || query[i] == '\r')
-            query[i] = ' ';
-    }
-    query = trimTrailing(query);
-    if (query.empty()) return "";
-    query += ' ';
-    Normalize();
-
-    std::string lower_q = query;
-    for (auto& c : lower_q) c = tolower(c);
-    if (lower_q.substr(0, 4) == "exit" && query[4] == ' ') {
-        return "Bye bye~";
-    }
-
-    std::stringstream ss;
-    std::streambuf* old_cout = std::cout.rdbuf(ss.rdbuf());
-
-    try {
-        EXEC();
-    } catch (...) {
-        std::cout.rdbuf(old_cout);
-        throw;
-    }
-
-    std::cout.rdbuf(old_cout);
-
-    std::string result = ss.str();
-    while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
-        result.pop_back();
-    return result;
-}
-
+//将query进行赋值
 void Interpreter::getQuery() {
     std::string tmp;
     do {
@@ -59,23 +22,25 @@ void Interpreter::getQuery() {
         query += tmp;
         query += ' ';
     } while (tmp[tmp.length() - 1] != ';');
-    query = trimTrailing(query);
-    if (!query.empty())
-        query += ' ';
+    //在最后补一个结尾标识符
+    query[query.length() - 2] = '\0';
+    //调用Normalize进行字符串的规范化
     Normalize();
 }
 
 void Interpreter::Normalize() {
-    for (int pos = 0; pos < (int)query.length(); pos++) {
+    //在所有的特殊符号的前后增加一个空格以拆分段落
+    for (int pos = 0; pos < query.length(); pos++) {
         if (query[pos] == '*' || query[pos] == '=' || query[pos] == ',' || query[pos] == '(' || query[pos] == ')' || query[pos] == '<' || query[pos] == '>') {
-            if (pos > 0 && query[pos - 1] != ' ')
+            if (query[pos - 1] != ' ')
                 query.insert(pos++, " ");
-            if (pos + 1 < (int)query.length() && query[pos + 1] != ' ')
+            if (query[pos + 1] != ' ')
                 query.insert(++pos, " ");
         }
     }
-    if (query.empty() || query.back() != ' ')
-        query += ' ';
+    //在结尾补一个空格以规范化
+    query.insert(query.length() - 2, " ");
+    //删除段落中的多余空格
     std::string::iterator it;
     int flag = 0;
     for (it = query.begin(); it < query.end(); it++) {
@@ -94,36 +59,31 @@ void Interpreter::Normalize() {
             continue;
         }
     }
-    if (!query.empty() && query[0] == ' ')
+    //如果段落开始有空格，就删除多余空格以规范化
+    if (query[0] == ' ')
         query.erase(query.begin());
+    //将query的第一个词全部转换为小写，方便之后对字符串的解析
     query = getLower(query, 0);
 }
 
-bool Interpreter::isEnd(int pos) {
-    return pos >= (int)query.length();
-}
-
 void Interpreter::EXEC() {
-    std::string log_query = query;
-    LogManager::getInstance().log("SQL", log_query);
     try {
+        //根据字符串的第一个单词来对所进行的操作解析
         if (query.substr(0, 6) == "select") {
             EXEC_SELECT();
         }
+        //由于drop有两种情况，所以需要进行进一步的解析
         else if (query.substr(0, 4) == "drop") {
             query = getLower(query, 5);
             if (query.substr(5, 5) == "table")
                 EXEC_DROP_TABLE();
             else if (query.substr(5, 5) == "index")
                 EXEC_DROP_INDEX();
-            else if (query.substr(5, 8) == "database")
-                EXEC_DROP_DATABASE();
-            else
-                throw input_format_error();
         }
         else if (query.substr(0, 6) == "insert") {
             EXEC_INSERT();
         }
+        //create也有两种情况
         else if (query.substr(0, 6) == "create") {
             query = getLower(query, 7);
             if (query.substr(7, 5) == "table") {
@@ -155,6 +115,7 @@ void Interpreter::EXEC() {
             EXEC_USE_DATABASE();
         }
         else if (query.substr(0, 8) == "describe" || query.substr(0, 4) == "desc") {
+            // DESCRIBE/DESC <name> 显示表结构
             EXEC_SHOW();
         }
         else if (query.substr(0, 4) == "show") {
@@ -164,6 +125,7 @@ void Interpreter::EXEC() {
             EXEC_EXIT();
         }
         else if (query.substr(0, 8) == "execfile") {
+            // EXECFILE <path> 从文件中逐行读取并执行SQL语句
             EXEC_FILE();
         }
         else {
@@ -171,6 +133,7 @@ void Interpreter::EXEC() {
         }
     }
 
+    // ===== 异常处理：输出友好的错误信息 =====
     catch (table_exist error) {
         std::cout << ">>> Error: Table has existed!" << std::endl;
     }
@@ -381,8 +344,10 @@ void Interpreter::EXEC_CREATE_INDEX() {
     std::string table_name;
     std::string attr_name;
     int check_index;
+    // "create index " 共13个字符
     index_name = getWord(13, check_index);
     check_index++;
+    // 验证ON关键字
     if (getLower(query, check_index).substr(check_index, 2) != "on")
         throw input_format_error();
     table_name = getWord(check_index + 3, check_index);
@@ -397,6 +362,7 @@ void Interpreter::EXEC_CREATE_INDEX() {
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== DROP INDEX <index_name> ON <table_name> =====
 void Interpreter::EXEC_DROP_INDEX() {
     API API;
     std::string table_name;
@@ -413,10 +379,14 @@ void Interpreter::EXEC_DROP_INDEX() {
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== EXIT =====
+// 退出MiniSQL程序
 void Interpreter::EXEC_EXIT() {
     throw exit_command();
 }
 
+// ===== EXECFILE <file_path> =====
+// 从指定文件中逐行读取SQL语句并执行
 void Interpreter::EXEC_FILE() {
     int check_index = 0;
     std::string file_path = getWord(9, check_index);
@@ -457,6 +427,8 @@ void Interpreter::EXEC_FILE() {
     }
 }
 
+// ===== DESCRIBE/DESC <table_name> =====
+// 显示表的结构信息（属性、类型、索引等）
 void Interpreter::EXEC_SHOW() {
     CatalogManager CM;
     std::string table_name;
@@ -662,6 +634,7 @@ void Interpreter::EXEC_DELETE() {
     std::string table_name;
     std::string attr_name;
     std::string relation;
+    // 验证FROM关键字
     if (getLower(query, 7).substr(7, 4) != "from")
         throw input_format_error();
     table_name = getWord(12, check_index);
@@ -675,12 +648,15 @@ void Interpreter::EXEC_DELETE() {
         return;
     }
 
+    // 解析WHERE条件
     if (getLower(query, check_index + 1).substr(check_index + 1, 5) != "where")
         throw input_format_error();
     attr_name = getWord(check_index + 7, check_index);
     if (!CM.hasAttribute(table_name, attr_name))
         throw attribute_not_exist();
+    // 提取关系运算符
     relation = getRelation(check_index + 1, check_index);
+    // 将关系运算符字符串转为枚举值
     if (relation == "<")
         where_delete.relation_character = LESS;
     else if (relation == "< =")
@@ -697,6 +673,7 @@ void Interpreter::EXEC_DELETE() {
         throw input_format_error();
     std::string value_delete = getWord(check_index + 1, check_index);
 
+    // 根据属性类型解析比较值
     Attribute tmp_attr = CM.getAttribute(table_name);
     for (int i = 0; i < tmp_attr.num; i++)
     {
@@ -704,6 +681,7 @@ void Interpreter::EXEC_DELETE() {
             where_delete.data.type = tmp_attr.type[i];
             switch (where_delete.data.type) {
             case -1:
+                // int类型：将字符串转为整数
                 try {
                     where_delete.data.datai = stringToNum<int>(value_delete);
                 }
@@ -712,6 +690,7 @@ void Interpreter::EXEC_DELETE() {
                 }
                 break;
             case 0:
+                // float类型：将字符串转为浮点数
                 try {
                     where_delete.data.dataf = stringToNum<float>(value_delete);
                 }
@@ -720,6 +699,7 @@ void Interpreter::EXEC_DELETE() {
                 }
                 break;
             default:
+                // string类型：需要用引号包围
                 try {
                     if (!(value_delete[0] == '\'' && value_delete[value_delete.length() - 1] == '\'') && !(value_delete[0] == '"' && value_delete[value_delete.length() - 1] == '"'))
                         throw input_format_error();
@@ -737,6 +717,7 @@ void Interpreter::EXEC_DELETE() {
     std::cout << ">>> SUCCESS" << std::endl;
 }
 
+// ===== INSERT INTO <table_name> VALUES (<value1>, <value2>, ...) =====
 void Interpreter::EXEC_INSERT() {
     API API;
     CatalogManager CM;
@@ -744,16 +725,21 @@ void Interpreter::EXEC_INSERT() {
     int check_index;
     Tuple tuple_insert;
     Attribute attr_exist;
+    // 验证INTO关键字
     if (getLower(query, 7).substr(7, 4) != "into")
         throw input_format_error();
+    // "insert into " 共12个字符
     table_name = getWord(12, check_index);
+    // 验证VALUES关键字
     if (getLower(query, check_index + 1).substr(check_index + 1, 6) != "values")
         throw input_format_error();
     check_index += 8;
+    // 验证左括号
     if (query[check_index] != '(')
         throw input_format_error();
     if (!CM.hasTable(table_name))
         throw table_not_exist();
+    // 获取表的属性信息，用于类型检查
     attr_exist = CM.getAttribute(table_name);
     check_index--;
     int num_of_insert = 0;
@@ -764,8 +750,10 @@ void Interpreter::EXEC_INSERT() {
         std::string value_insert = getWord(check_index, check_index);
         Data insert_data;
         insert_data.type = attr_exist.type[num_of_insert];
+        // 根据属性类型解析插入值
         switch (attr_exist.type[num_of_insert]) {
         case -1:
+            // int类型
             try {
                 insert_data.datai = stringToNum<int>(value_insert);
             }
@@ -774,6 +762,7 @@ void Interpreter::EXEC_INSERT() {
             }
             break;
         case 0:
+            // float类型
             try {
                 insert_data.dataf = stringToNum<float>(value_insert);
             }
@@ -782,6 +771,7 @@ void Interpreter::EXEC_INSERT() {
             }
             break;
         default:
+            // string类型：需要用引号包围，且长度不能超过定义的char长度
             try {
                 if (!(value_insert[0] == '\'' && value_insert[value_insert.length() - 1] == '\'') && !(value_insert[0] == '"' && value_insert[value_insert.length() - 1] == '"'))
                     throw input_format_error();
@@ -820,6 +810,7 @@ void Interpreter::EXEC_SELECT() {
     Where tmp_where;
     std::string relation;
     Table output_table;
+    // op: 0=OR, 1=AND，默认为OR（单条件时无影响）
     char op = 0;
     int check_index;
     int flag = 0;
@@ -861,10 +852,12 @@ void Interpreter::EXEC_SELECT() {
     }
     else if (getWord(7, check_index) == "*")
     {
+        // SELECT * 表示查询所有属性
         flag = 1;
         check_index++;
     }
     else {
+        // SELECT attr1, attr2, ... 解析逗号分隔的属性名列表
         check_index = 7;
         while (1) {
             attr_name.push_back(getWord(check_index, check_index));
@@ -874,6 +867,7 @@ void Interpreter::EXEC_SELECT() {
                 check_index += 2;
         }
     }
+    // 验证FROM关键字
     if (getLower(query, check_index).substr(check_index, 4) != "from")
         throw input_format_error();
     check_index += 5;
@@ -921,15 +915,20 @@ void Interpreter::EXEC_SELECT() {
     if (isEnd(check_index))
         output_table = API.selectRecord(table_name, target_name, where_select, op);
     else {
+        // 解析WHERE条件
         if (getLower(query, check_index).substr(check_index, 5) != "where")
             throw input_format_error();
         check_index += 6;
+        // 循环解析多个WHERE条件（用AND/OR连接）
         while (1) {
+            // 提取条件中的属性名
             tmp_target_name = getWord(check_index, check_index);
             if (!CM.hasAttribute(table_name, tmp_target_name))
                 throw attribute_not_exist();
             target_name.push_back(tmp_target_name);
+            // 提取关系运算符
             relation = getRelation(check_index + 1, check_index);
+            // 转换关系运算符为枚举值
             if (relation == "<")
                 tmp_where.relation_character = LESS;
             else if (relation == "< =")
@@ -945,6 +944,7 @@ void Interpreter::EXEC_SELECT() {
             else
                 throw input_format_error();
             tmp_value = getWord(check_index + 1, check_index);
+            // 根据属性类型解析比较值
             for (int i = 0; i < tmp_attr.num; i++)
             {
                 if (tmp_target_name == tmp_attr.name[i]) {
@@ -1037,6 +1037,7 @@ void Interpreter::EXEC_SELECT() {
     }
 
     Attribute attr_record = output_table.attr_;
+    // use数组记录每个输出列在属性表中的实际索引位置
     int use[32] = { 0 };
     if (attr_name.size() == 0) {
         for (int i = 0; i < attr_record.num; i++)
@@ -1052,6 +1053,7 @@ void Interpreter::EXEC_SELECT() {
                 }
             }
     }
+    // 计算每列的最大宽度用于对齐
     std::vector<Tuple> output_tuple = output_table.getTuple();
     int longest = -1;
     for (int index = 0; index < (int)attr_name.size(); index++) {
@@ -1177,9 +1179,11 @@ void Interpreter::EXEC_SELECT() {
     }
 }
 
+// ===== CREATE TABLE <name> (<attr1> <type1> [unique], ..., PRIMARY KEY(<attr>)) =====
 void Interpreter::EXEC_CREATE_TABLE() {
     std::string table_name;
     int check_index;
+    // "create table " 共13个字符
     table_name = getWord(13, check_index);
     Index index_create;
     index_create.num = 0;
@@ -1187,6 +1191,7 @@ void Interpreter::EXEC_CREATE_TABLE() {
     std::string attr_name;
     int primary = -1;
     int attr_num = 0;
+    // 循环解析括号中的属性定义
     while (1) {
         check_index += 3;
         if (isEnd(check_index)) {
@@ -1198,6 +1203,7 @@ void Interpreter::EXEC_CREATE_TABLE() {
         attr_name = getWord(check_index, check_index);
         std::string check_primary(attr_name);
         check_primary = getLower(check_primary, 0);
+        // 检查是否是PRIMARY KEY定义
         if (check_primary == "primary") {
             int tmp_end = check_index;
             std::string check_key = getWord(tmp_end + 1, tmp_end);
@@ -1207,6 +1213,7 @@ void Interpreter::EXEC_CREATE_TABLE() {
                 break;
             }
             else {
+                // 解析PRIMARY KEY(attr_name)
                 check_index = tmp_end + 3;
                 std::string unique_name = getWord(check_index, check_index);
                 int hasset = 1;
@@ -1226,6 +1233,7 @@ void Interpreter::EXEC_CREATE_TABLE() {
         }
         else
             attr_create.name[attr_num] = attr_name;
+        // 解析属性类型
         check_index++;
         attr_create.type[attr_num] = getType(check_index, check_index);
         attr_create.unique[attr_num] = false;
@@ -1270,6 +1278,7 @@ short Interpreter::getType(int pos, int& end_pos) {
         end_pos += 3;
         std::string length = getWord(end_pos, end_pos);
         end_pos += 2;
+        // 返回长度+1，因为0已被float占用，需要+1来区分
         return atoi(length.c_str()) + 1;
     }
     throw input_format_error();
