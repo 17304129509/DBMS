@@ -1,53 +1,62 @@
+// record_manager.cpp - è®°å½•ç®¡ç†å™¨
+// è´Ÿè´£è¡¨æ•°æ®æ–‡ä»¶çš„åˆ›å»º/åˆ é™¤ï¼Œä»¥åŠè®°å½•çš„å¢åˆ æŸ¥æ”¹ã€‚
+// è®°å½•ä»¥æ–‡æœ¬æ ¼å¼å­˜å‚¨åœ¨é¡µé¢ç¼“å†²åŒºä¸­ï¼Œæ¯æ¡è®°å½•æ ¼å¼ï¼š
+//   <é•¿åº¦4å­—èŠ‚> <å­—æ®µ1> <å­—æ®µ2> ... <åˆ é™¤æ ‡è®°1å­—èŠ‚> <æ¢è¡Œç¬¦>
+// åˆ é™¤æ ‡è®°ï¼š'0'=æœ‰æ•ˆè®°å½•ï¼Œ'1'=å·²åˆ é™¤è®°å½•
+
 #include "record_manager.h"
 
-//ÊäÈë£º±íÃû
-//Êä³ö£ºvoid
-//¹¦ÄÜ£º½¨Á¢±íÎÄ¼ş
-//Òì³££ºÎŞÒì³£´¦Àí£¨ÓÉcatalog manager´¦Àí£©
+// æ ¹æ®current_databaseè¿”å›è¡¨æ•°æ®æ–‡ä»¶çš„å®Œæ•´è·¯å¾„
+// å½“current_databaseä¸ºç©ºæ—¶ä½¿ç”¨é»˜è®¤è·¯å¾„ï¼Œå¦åˆ™ä½¿ç”¨æ•°æ®åº“ä¸“å±è·¯å¾„
+std::string RecordManager::getDataFilePath(std::string table_name) {
+    if (current_database.empty()) {
+        return "./database/data/" + table_name;
+    }
+    return "./database/" + current_database + "/data/" + table_name;
+}
+
+// åˆ›å»ºè¡¨æ•°æ®æ–‡ä»¶ï¼ˆç©ºæ–‡ä»¶ï¼‰
 void RecordManager::createTableFile(std::string table_name) {
-    table_name = "./database/data/" + table_name;
-    FILE* f = fopen(table_name.c_str(), "w");
+    std::string file_path = getDataFilePath(table_name);
+    FILE* f = fopen(file_path.c_str(), "w");
     fclose(f);
 }
 
-//ÊäÈë£º±íÃû
-//Êä³ö£ºvoid
-//¹¦ÄÜ£ºÉ¾³ı±íÎÄ¼ş
-//Òì³££ºÎŞÒì³£´¦Àí£¨ÓÉcatalog manager´¦Àí£©
+// åˆ é™¤è¡¨æ•°æ®æ–‡ä»¶
+// å¿…é¡»å…ˆä½¿ç¼“å†²åŒºä¸­è¯¥æ–‡ä»¶çš„ç¼“å­˜é¡µå¤±æ•ˆï¼Œå¦åˆ™åç»­æ“ä½œå¯èƒ½è¯»åˆ°æ—§æ•°æ®
 void RecordManager::dropTableFile(std::string table_name) {
-    table_name = "./database/data/" + table_name;
-    remove(table_name.c_str());
+    std::string file_path = getDataFilePath(table_name);
+    buffer_manager.invalidateFile(file_path);
+    remove(file_path.c_str());
 }
 
-//ÊäÈë£º±íÃû£¬Ò»¸öÔª×é
-//Êä³ö£ºvoid
-//¹¦ÄÜ£ºÏò¶ÔÓ¦±íÖĞ²åÈëÒ»Ìõ¼ÇÂ¼
-//Òì³££ºÈç¹ûÔª×éÀàĞÍ²»Æ¥Åä£¬Å×³ötuple_type_conflictÒì³£¡£Èç¹û
-//Ö÷¼ü³åÍ»£¬Å×³öprimary_key_conflictÒì³£¡£Èç¹ûuniqueÊôĞÔ³åÍ»£¬
-//Å×³öunique_conflictÒì³£¡£Èç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£¡£
+// æ’å…¥ä¸€æ¡è®°å½•
+// 1. ç±»å‹æ£€æŸ¥ï¼šéªŒè¯æ’å…¥æ•°æ®ä¸è¡¨å®šä¹‰çš„å±æ€§ç±»å‹ä¸€è‡´
+// 2. å†²çªæ£€æŸ¥ï¼šéªŒè¯ä¸»é”®å’Œuniqueå±æ€§ä¸å†²çª
+// 3. å†™å…¥é¡µé¢ï¼šæ‰¾åˆ°æœ‰è¶³å¤Ÿç©ºé—´çš„é¡µé¢å†™å…¥è®°å½•
+// 4. æ›´æ–°ç´¢å¼•ï¼šå¯¹æœ‰ç´¢å¼•çš„å±æ€§æ›´æ–°B+æ ‘
 void RecordManager::insertRecord(std::string table_name, Tuple& tuple) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
     Attribute attr = catalog_manager.getAttribute(tmp_name);
+    // ç±»å‹æ£€æŸ¥
     std::vector<Data> v = tuple.getData();
-    //¼ì²â²åÈëµÄÔª×éµÄ¸÷¸öÊôĞÔÊÇ·ñºÏ·¨
-    for (int i = 0; i < v.size(); i++) {
+    for (int i = 0; i < (int)v.size(); i++) {
         if (v[i].type != attr.type[i])
             throw tuple_type_conflict();
     }
+    // ä¸»é”®å†²çªæ£€æŸ¥
     Table table = selectRecord(tmp_name);
     std::vector<Tuple>& tuples = table.getTuple();
-    //¼ì²âÊÇ·ñ´æÔÚÖ÷¼ü³åÍ»
     if (attr.primary_key >= 0) {
         if (isConflict(tuples, v, attr.primary_key) == true)
             throw primary_key_conflict();
     }
-    //¼ì²âÊÇ·ñ´æÔÚunqiue³åÍ»
+    // uniqueå±æ€§å†²çªæ£€æŸ¥
     for (int i = 0; i < attr.num; i++) {
         if (attr.unique[i] == true) {
             if (isConflict(tuples, v, i) == true)
@@ -55,24 +64,17 @@ void RecordManager::insertRecord(std::string table_name, Tuple& tuple) {
         }
     }
 
-    //Òì³£¼ì²âÍê³É
-
-    //»ñÈ¡±íËùÕ¼µÄ¿éµÄÊıÁ¿
-    // int block_num = getFileSize(table_name) / PAGESIZE;
-    // ¸ÄÎª
-    int block_num = getBlockNum(table_name);
-    //´¦Àí±íÎÄ¼ş´óĞ¡Îª0µÄÌØÊâÇé¿ö
+    // æ‰¾åˆ°æœ‰è¶³å¤Ÿç©ºé—´çš„é¡µé¢å†™å…¥è®°å½•
+    int block_num = getBlockNum(table_path);
     if (block_num <= 0)
         block_num = 1;
-    //»ñÈ¡±íµÄ×îºóÒ»¿éµÄ¾ä±ú
-    char* p = buffer_manager.getPage(table_name, block_num - 1);
+    char* p = buffer_manager.getPage(table_path, block_num - 1);
     int i;
-    //Ñ°ÕÒµÚÒ»¸ö¿ÕÎ»
     for (i = 0; p[i] != '\0' && i < PAGESIZE; i++);
+    // è®¡ç®—è®°å½•çš„æ€»é•¿åº¦
     int j;
     int len = 0;
-    //¼ÆËã²åÈëµÄtupleµÄ³¤¶È
-    for (j = 0; j < v.size(); j++) {
+    for (j = 0; j < (int)v.size(); j++) {
         Data d = v[j];
         switch (d.type) {
         case -1: {
@@ -84,38 +86,30 @@ void RecordManager::insertRecord(std::string table_name, Tuple& tuple) {
             len += t;
         }; break;
         default: {
-            len += d.datas.length();
+            len += (int)d.datas.length();
         };
         }
     }
-    len += v.size() + 7;
-    int block_offset;//×îÖÕ¼ÇÂ¼Ëù²åÈëµÄ¿éµÄ±àºÅ
-    //Èç¹ûÊ£ÓàµÄ¿Õ¼ä×ã¹»²åÈë¸Ãtuple
+    // åŠ ä¸Šé•¿åº¦å­—æ®µ(4) + æ¯ä¸ªå­—æ®µå‰çš„ç©ºæ ¼(num) + åˆ é™¤æ ‡è®°(2) + æ¢è¡Œ(1)
+    len += (int)v.size() + 7;
+    int block_offset;
     if (PAGESIZE - i >= len) {
+        // å½“å‰é¡µæœ‰è¶³å¤Ÿç©ºé—´
         block_offset = block_num - 1;
-        //²åÈë¸ÃÔª×é
         insertRecord1(p, i, len, v);
-        //Ğ´»Ø±íÎÄ¼ş
-        int page_id = buffer_manager.getPageId(table_name, block_num - 1);
-        // buffer_manager.flushPage(page_id , table_name , block_num - 1);
-        // ¸ÄÎª
+        int page_id = buffer_manager.getPageId(table_path, block_num - 1);
         buffer_manager.modifyPage(page_id);
     }
-    //Èç¹ûÊ£ÓàµÄ¿Õ¼ä²»¹»
     else {
+        // å½“å‰é¡µç©ºé—´ä¸è¶³ï¼Œä½¿ç”¨æ–°é¡µé¢
         block_offset = block_num;
-        //ĞÂÔöÒ»¸ö¿é
-        char* p = buffer_manager.getPage(table_name, block_num);
-        //ÔÚĞÂÔöµÄ¿éÖĞ²åÈë¸ÃÔª×é
+        char* p = buffer_manager.getPage(table_path, block_num);
         insertRecord1(p, 0, len, v);
-        //Ğ´»Ø±íÎÄ¼ş
-        int page_id = buffer_manager.getPageId(table_name, block_num);
-        // buffer_manager.flushPage(page_id , table_name , block_num);
-        // ¸ÄÎª
+        int page_id = buffer_manager.getPageId(table_path, block_num);
         buffer_manager.modifyPage(page_id);
     }
 
-    //¸üĞÂË÷Òı
+    // æ›´æ–°ç´¢å¼•ï¼šå¯¹æœ‰ç´¢å¼•çš„å±æ€§åœ¨B+æ ‘ä¸­æ’å…¥æ–°é”®å€¼
     IndexManager index_manager(tmp_name);
     for (int i = 0; i < attr.num; i++) {
         if (attr.has_index[i] == true) {
@@ -127,75 +121,57 @@ void RecordManager::insertRecord(std::string table_name, Tuple& tuple) {
     }
 }
 
-// ÊäÈë£º±íÃû
-// Êä³ö£ºint(É¾³ıµÄ¼ÇÂ¼Êı)
-// ¹¦ÄÜ£ºÉ¾³ı¶ÔÓ¦±íÖĞËùÓĞ¼ÇÂ¼£¨²»É¾³ı±íÎÄ¼ş£©
-// Òì³££ºÈç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
+// åˆ é™¤è¡¨ä¸­æ‰€æœ‰è®°å½•
+// éå†æ‰€æœ‰é¡µé¢ï¼Œå°†æ¯æ¡è®°å½•æ ‡è®°ä¸ºå·²åˆ é™¤ï¼Œå¹¶åˆ é™¤å¯¹åº”çš„ç´¢å¼•
 int RecordManager::deleteRecord(std::string table_name) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
-    //»ñÈ¡ÎÄ¼şËùÕ¼¿éµÄÊıÁ¿
-    // int block_num = getFileSize(table_name) / PAGESIZE;
-    // ¸ÄÎª
-    int block_num = getBlockNum(table_name);
-    //±íÎÄ¼ş´óĞ¡Îª0Ê±Ö±½Ó·µ»Ø
+    int block_num = getBlockNum(table_path);
     if (block_num <= 0)
         return 0;
     Attribute attr = catalog_manager.getAttribute(tmp_name);
     IndexManager index_manager(tmp_name);
     int count = 0;
-    //±éÀúËùÓĞ¿é
     for (int i = 0; i < block_num; i++) {
-        //»ñÈ¡µ±Ç°¿éµÄ¾ä±ú
-        char* p = buffer_manager.getPage(table_name, i);
+        char* p = buffer_manager.getPage(table_path, i);
         char* t = p;
-        //½«¿éÖĞµÄÃ¿Ò»¸öÔª×é¼ÇÂ¼ÉèÖÃÎªÒÑÉ¾³ı
         while (*p != '\0' && p < t + PAGESIZE) {
-            //¸üĞÂË÷Òı
             Tuple tuple = readTuple(p, attr);
+            // åˆ é™¤è¯¥è®°å½•çš„æ‰€æœ‰ç´¢å¼•
             for (int j = 0; j < attr.num; j++) {
                 if (attr.has_index[j] == true) {
-                    std::string attr_name = attr.name[i];
+                    std::string attr_name = attr.name[j];
                     std::string file_path = "INDEX_FILE_" + attr_name + "_" + tmp_name;
                     std::vector<Data> d = tuple.getData();
                     index_manager.deleteIndexByKey(file_path, d[j]);
                 }
             }
-            //É¾³ı¼ÇÂ¼
             p = deleteRecord1(p);
             count++;
         }
-        //½«¿éĞ´»Ø±íÎÄ¼ş
-        int page_id = buffer_manager.getPageId(table_name, i);
-        // buffer_manager.flushPage(page_id , table_name , i);
-        // ¸ÄÎª
+        int page_id = buffer_manager.getPageId(table_path, i);
         buffer_manager.modifyPage(page_id);
     }
     return count;
 }
 
-//ÊäÈë£º±íÃû£¬Ä¿±êÊôĞÔ£¬Ò»¸öWhereÀàĞÍµÄ¶ÔÏó
-//Êä³ö£ºint(É¾³ıµÄ¼ÇÂ¼Êı)
-//¹¦ÄÜ£ºÉ¾³ı¶ÔÓ¦±íÖĞËùÓĞÄ¿±êÊôĞÔÖµÂú×ãWhereÌõ¼şµÄ¼ÇÂ¼
-//Òì³££ºÈç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£¡£Èç¹ûÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£¡£
-//Èç¹ûWhereÌõ¼şÖĞµÄÁ½¸öÊı¾İÀàĞÍ²»Æ¥Åä£¬Å×³ödata_type_conflictÒì³£¡£
+// æ¡ä»¶åˆ é™¤ï¼šåˆ é™¤æ»¡è¶³WHEREæ¡ä»¶çš„è®°å½•
+// å¦‚æœç›®æ ‡å±æ€§æœ‰ç´¢å¼•ä¸”ä¸æ˜¯!=æ“ä½œï¼Œåˆ™é€šè¿‡ç´¢å¼•åŠ é€ŸæŸ¥æ‰¾
 int RecordManager::deleteRecord(std::string table_name, std::string target_attr, Where where) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
     Attribute attr = catalog_manager.getAttribute(tmp_name);
     int index = -1;
     bool flag = false;
-    //»ñÈ¡Ä¿±êÊôĞÔ¶ÔÓ¦µÄ±àºÅ
+    // æ‰¾åˆ°ç›®æ ‡å±æ€§çš„ä½ç½®ï¼Œå¹¶æ£€æŸ¥æ˜¯å¦æœ‰ç´¢å¼•
     for (int i = 0; i < attr.num; i++) {
         if (attr.name[i] == target_attr) {
             index = i;
@@ -204,36 +180,27 @@ int RecordManager::deleteRecord(std::string table_name, std::string target_attr,
             break;
         }
     }
-    //Ä¿±êÊôĞÔ²»´æÔÚ£¬Å×³öÒì³£
     if (index == -1) {
         throw attribute_not_exist();
     }
-    //whereÌõ¼şÖĞµÄÁ½¸öÊı¾İµÄÀàĞÍ²»Æ¥Åä£¬Å×³öÒì³£
     else if (attr.type[index] != where.data.type) {
         throw data_type_conflict();
     }
 
-    //Òì³£´¦ÀíÍê³É
-
     int count = 0;
-    //Èç¹ûÄ¿±êÊôĞÔÉÏÓĞË÷Òı
     if (flag == true && where.relation_character != NOT_EQUAL) {
+        // æœ‰ç´¢å¼•ä¸”é!=æ“ä½œï¼šé€šè¿‡ç´¢å¼•ç¼©å°æœç´¢èŒƒå›´
         std::vector<int> block_ids;
-        //Í¨¹ıË÷Òı»ñÈ¡Âú×ãÌõ¼şµÄ¼ÇÂ¼ËùÔÚµÄ¿éºÅ
         searchWithIndex(tmp_name, target_attr, where, block_ids);
-        for (int i = 0; i < block_ids.size(); i++) {
+        for (int i = 0; i < (int)block_ids.size(); i++) {
             count += conditionDeleteInBlock(tmp_name, block_ids[i], attr, index, where);
         }
     }
     else {
-        //»ñÈ¡ÎÄ¼şËùÕ¼¿éµÄÊıÁ¿
-        // int block_num = getFileSize(table_name) / PAGESIZE;
-        // ¸ÄÎª
-        int block_num = getBlockNum(table_name);
-        //ÎÄ¼ş´óĞ¡Îª0£¬Ö±½Ó·µ»Ø
+        // æ— ç´¢å¼•æˆ–!=æ“ä½œï¼šå…¨è¡¨æ‰«æ
+        int block_num = getBlockNum(table_path);
         if (block_num <= 0)
             return 0;
-        //±éÀúËùÓĞµÄ¿é
         for (int i = 0; i < block_num; i++) {
             count += conditionDeleteInBlock(tmp_name, i, attr, index, where);
         }
@@ -241,40 +208,26 @@ int RecordManager::deleteRecord(std::string table_name, std::string target_attr,
     return count;
 }
 
-//ÊäÈë£º±íÃû
-//Êä³ö£ºTableÀàĞÍ¶ÔÏó
-//¹¦ÄÜ£º·µ»ØÕûÕÅ±í
-//Òì³££ºÈç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£
+// æŸ¥è¯¢æ•´å¼ è¡¨çš„æ‰€æœ‰è®°å½•
 Table RecordManager::selectRecord(std::string table_name, std::string result_table_name) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
-    //»ñÈ¡ÎÄ¼şËùÕ¼µÄ¿éµÄÊıÁ¿
-    // int block_num = getFileSize(table_name) / PAGESIZE;
-    // ¸ÄÎª
-    int block_num = getBlockNum(table_name);
-    //´¦ÀíÎÄ¼ş´óĞ¡Îª0µÄÌØÊâÇé¿ö
+    int block_num = getBlockNum(table_path);
     if (block_num <= 0)
         block_num = 1;
-    //»ñÈ¡±íµÄÊôĞÔ
     Attribute attr = catalog_manager.getAttribute(tmp_name);
-    //¹¹½¨tableÀàµÄÊµÀı
     Table table(result_table_name, attr);
     std::vector<Tuple>& v = table.getTuple();
-    //±éÀúËùÓĞ¿é
+    // éå†æ‰€æœ‰é¡µé¢ï¼Œè¯»å–æœªåˆ é™¤çš„è®°å½•
     for (int i = 0; i < block_num; i++) {
-        //»ñÈ¡µ±Ç°¿éµÄ¾ä±ú
-        char* p = buffer_manager.getPage(table_name, i);
+        char* p = buffer_manager.getPage(table_path, i);
         char* t = p;
-        //±éÀú¿éÖĞËùÓĞ¼ÇÂ¼
         while (*p != '\0' && p < t + PAGESIZE) {
-            //¶ÁÈ¡¼ÇÂ¼
             Tuple tuple = readTuple(p, attr);
-            //Èç¹û¼ÇÂ¼Ã»ÓĞ±»É¾³ı£¬½«ÆäÌí¼Óµ½tableÖĞ
             if (tuple.isDeleted() == false)
                 v.push_back(tuple);
             int len = getTupleLength(p);
@@ -284,23 +237,19 @@ Table RecordManager::selectRecord(std::string table_name, std::string result_tab
     return table;
 }
 
-//ÊäÈë£º±íÃû£¬Ä¿±êÊôĞÔ£¬Ò»¸öWhereÀàĞÍµÄ¶ÔÏó
-//Êä³ö£ºTableÀàĞÍ¶ÔÏó
-//¹¦ÄÜ£º·µ»Ø°üº¬ËùÓĞÄ¿±êÊôĞÔÂú×ãWhereÌõ¼şµÄ¼ÇÂ¼µÄ±í
-//Òì³££ºÈç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£¡£Èç¹ûÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£¡£
-//Èç¹ûWhereÌõ¼şÖĞµÄÁ½¸öÊı¾İÀàĞÍ²»Æ¥Åä£¬Å×³ödata_type_conflictÒì³£¡£
+// æ¡ä»¶æŸ¥è¯¢ï¼šè¿”å›æ»¡è¶³WHEREæ¡ä»¶çš„è®°å½•
+// å¦‚æœç›®æ ‡å±æ€§æœ‰ç´¢å¼•ä¸”ä¸æ˜¯!=æ“ä½œï¼Œåˆ™é€šè¿‡ç´¢å¼•åŠ é€ŸæŸ¥æ‰¾
 Table RecordManager::selectRecord(std::string table_name, std::string target_attr, Where where, std::string result_table_name) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
     Attribute attr = catalog_manager.getAttribute(tmp_name);
     int index = -1;
     bool flag = false;
-    //»ñÈ¡Ä¿±êÊôĞÔµÄ±àºÅ
+    // æ‰¾åˆ°ç›®æ ‡å±æ€§çš„ä½ç½®ï¼Œå¹¶æ£€æŸ¥æ˜¯å¦æœ‰ç´¢å¼•
     for (int i = 0; i < attr.num; i++) {
         if (attr.name[i] == target_attr) {
             index = i;
@@ -309,37 +258,28 @@ Table RecordManager::selectRecord(std::string table_name, std::string target_att
             break;
         }
     }
-    //Ä¿±êÊôĞÔ²»´æÔÚ£¬Å×³öÒì³£
     if (index == -1) {
         throw attribute_not_exist();
     }
-    //whereÌõ¼şÖĞµÄÁ½¸öÊı¾İµÄÀàĞÍ²»Æ¥Åä£¬Å×³öÒì³£
     else if (attr.type[index] != where.data.type) {
         throw data_type_conflict();
     }
 
-    //Òì³£¼ì²âÍê³É
-
-    //¹¹½¨table
     Table table(result_table_name, attr);
     std::vector<Tuple>& v = table.getTuple();
     if (flag == true && where.relation_character != NOT_EQUAL) {
+        // æœ‰ç´¢å¼•ä¸”é!=æ“ä½œï¼šé€šè¿‡ç´¢å¼•ç¼©å°æœç´¢èŒƒå›´
         std::vector<int> block_ids;
-        //Ê¹ÓÃË÷Òı»ñÈ¡Âú×ãÌõ¼şµÄ¼ÇÂ¼ËùÔÚ¿éºÅ
         searchWithIndex(tmp_name, target_attr, where, block_ids);
-        for (int i = 0; i < block_ids.size(); i++) {
+        for (int i = 0; i < (int)block_ids.size(); i++) {
             conditionSelectInBlock(tmp_name, block_ids[i], attr, index, where, v);
         }
     }
     else {
-        //»ñÈ¡ÎÄ¼şËùÕ¼µÄ¿éµÄÊıÁ¿
-        // int block_num = getFileSize(table_name) / PAGESIZE;
-        // ¸ÄÎª
-        int block_num = getBlockNum(table_name);
-        //´¦ÀíÎÄ¼ş´óĞ¡Îª0µÄÌØÊâÇé¿ö
+        // æ— ç´¢å¼•æˆ–!=æ“ä½œï¼šå…¨è¡¨æ‰«æ
+        int block_num = getBlockNum(table_path);
         if (block_num <= 0)
             block_num = 1;
-        //±éÀúËùÓĞ¿é
         for (int i = 0; i < block_num; i++) {
             conditionSelectInBlock(tmp_name, i, attr, index, where, v);
         }
@@ -347,50 +287,35 @@ Table RecordManager::selectRecord(std::string table_name, std::string target_att
     return table;
 }
 
-//ÊäÈë£º±íÃû£¬Ä¿±êÊôĞÔÃû
-//Êä³ö£ºvoid
-//¹¦ÄÜ£º¶Ô±íÖĞÒÑ¾­´æÔÚµÄ¼ÇÂ¼½¨Á¢Ë÷Òı
-//Òì³££ºÈç¹û±í²»´æÔÚ£¬Å×³ötable_not_existÒì³£¡£Èç¹ûÊôĞÔ²»´æÔÚ£¬Å×³öattribute_not_existÒì³£¡£
+// ä¸ºå·²æœ‰è®°å½•åˆ›å»ºB+æ ‘ç´¢å¼•
+// éå†æ‰€æœ‰è®°å½•ï¼Œå°†æŒ‡å®šå±æ€§çš„å€¼å’Œæ‰€åœ¨å—å·æ’å…¥B+æ ‘
 void RecordManager::createIndex(IndexManager& index_manager, std::string table_name, std::string target_attr) {
     std::string tmp_name = table_name;
-    table_name = "./database/data/" + table_name;
+    std::string table_path = getDataFilePath(table_name);
     CatalogManager catalog_manager;
-    //¼ì²â±íÊÇ·ñ´æÔÚ
     if (!catalog_manager.hasTable(tmp_name)) {
         throw table_not_exist();
     }
     Attribute attr = catalog_manager.getAttribute(tmp_name);
     int index = -1;
-    //»ñÈ¡Ä¿±êÊôĞÔµÄ±àºÅ
     for (int i = 0; i < attr.num; i++) {
         if (attr.name[i] == target_attr) {
             index = i;
             break;
         }
     }
-    //Ä¿±êÊôĞÔ²»´æÔÚ£¬Å×³öÒì³£
     if (index == -1) {
         throw attribute_not_exist();
     }
-    //Òì³£¼ì²âÍê³É
 
-    //»ñÈ¡ÎÄ¼şËùÕ¼µÄ¿éµÄÊıÁ¿
-    // int block_num = getFileSize(table_name) / PAGESIZE;
-    // ¸ÄÎª
-    int block_num = getBlockNum(table_name);
-    //´¦ÀíÎÄ¼ş´óĞ¡Îª0µÄÌØÊâÇé¿ö
+    int block_num = getBlockNum(table_path);
     if (block_num <= 0)
         block_num = 1;
-    //»ñÈ¡±íµÄÊôĞÔ
     std::string file_path = "INDEX_FILE_" + target_attr + "_" + tmp_name;
-    //±éÀúËùÓĞ¿é
     for (int i = 0; i < block_num; i++) {
-        //»ñÈ¡µ±Ç°¿éµÄ¾ä±ú
-        char* p = buffer_manager.getPage(table_name, i);
+        char* p = buffer_manager.getPage(table_path, i);
         char* t = p;
-        //±éÀú¿éÖĞËùÓĞ¼ÇÂ¼
         while (*p != '\0' && p < t + PAGESIZE) {
-            //¶ÁÈ¡¼ÇÂ¼
             Tuple tuple = readTuple(p, attr);
             if (tuple.isDeleted() == false) {
                 std::vector<Data> v = tuple.getData();
@@ -402,30 +327,30 @@ void RecordManager::createIndex(IndexManager& index_manager, std::string table_n
     }
 }
 
-
-//ÒÔÏÂÊÇ¼¸¸ö¸¨Öúº¯Êı£¬²»ÏêÏ¸×¢ÊÍÁË
-
-//»ñÈ¡ÎÄ¼ş´óĞ¡
+// è·å–æ–‡ä»¶çš„æ€»å—æ•°
 int RecordManager::getBlockNum(std::string table_name) {
     char* p;
     int block_num = -1;
     do {
-        p = buffer_manager.getPage(table_name, block_num + 1);
+        p = buffer_manager.getPage(table_name , block_num + 1);
         block_num++;
-    } while (p[0] != '\0');
+    } while(p[0] != '\0');
     return block_num;
 }
 
-//insertRecordµÄ¸¨Öúº¯Êı
+// å°†ä¸€æ¡è®°å½•åºåˆ—åŒ–å†™å…¥é¡µé¢ç¼“å†²åŒº
+// æ ¼å¼ï¼š<é•¿åº¦4å­—èŠ‚><ç©ºæ ¼><å­—æ®µ1><ç©ºæ ¼><å­—æ®µ2>...<ç©ºæ ¼><åˆ é™¤æ ‡è®°><æ¢è¡Œ>
 void RecordManager::insertRecord1(char* p, int offset, int len, const std::vector<Data>& v) {
     std::stringstream stream;
     stream << len;
     std::string s = stream.str();
+    // é•¿åº¦å­—æ®µå›ºå®š4ä½ï¼Œä¸è¶³è¡¥0
     while (s.length() < 4)
         s = "0" + s;
-    for (int j = 0; j < s.length(); j++, offset++)
+    for (int j = 0; j < (int)s.length(); j++, offset++)
         p[offset] = s[j];
-    for (int j = 0; j < v.size(); j++) {
+    // é€ä¸ªå­—æ®µå†™å…¥
+    for (int j = 0; j < (int)v.size(); j++) {
         p[offset] = ' ';
         offset++;
         Data d = v[j];
@@ -441,12 +366,13 @@ void RecordManager::insertRecord1(char* p, int offset, int len, const std::vecto
         };
         }
     }
+    // åˆ é™¤æ ‡è®°'0'è¡¨ç¤ºæœ‰æ•ˆè®°å½•ï¼Œæ¢è¡Œç¬¦è¡¨ç¤ºè®°å½•ç»“æŸ
     p[offset] = ' ';
     p[offset + 1] = '0';
     p[offset + 2] = '\n';
 }
 
-//deleteRecordµÄ¸¨Öúº¯Êı
+// é€»è¾‘åˆ é™¤ä¸€æ¡è®°å½•ï¼šå°†åˆ é™¤æ ‡è®°ä»'0'æ”¹ä¸º'1'
 char* RecordManager::deleteRecord1(char* p) {
     int len = getTupleLength(p);
     p = p + len;
@@ -454,21 +380,23 @@ char* RecordManager::deleteRecord1(char* p) {
     return p;
 }
 
-//´ÓÄÚ´æÖĞ¶ÁÈ¡Ò»¸ötuple
+// ä»é¡µé¢ç¼“å†²åŒºä¸­è¯»å–ä¸€æ¡è®°å½•å¹¶ååºåˆ—åŒ–ä¸ºTupleå¯¹è±¡
 Tuple RecordManager::readTuple(const char* p, Attribute attr) {
     Tuple tuple;
-    p = p + 5;
+    p = p + 5; // è·³è¿‡é•¿åº¦å­—æ®µ(4å­—èŠ‚)å’Œç©ºæ ¼(1å­—èŠ‚)
     for (int i = 0; i < attr.num; i++) {
         Data data;
         data.type = attr.type[i];
         char tmp[100];
         int j;
+        // è¯»å–åˆ°ç©ºæ ¼ä¸ºæ­¢ï¼Œå¾—åˆ°ä¸€ä¸ªå­—æ®µçš„å­—ç¬¦ä¸²è¡¨ç¤º
         for (j = 0; *p != ' '; j++, p++) {
             tmp[j] = *p;
         }
         tmp[j] = '\0';
         p++;
         std::string s(tmp);
+        // æ ¹æ®å±æ€§ç±»å‹å°†å­—ç¬¦ä¸²è½¬ä¸ºå¯¹åº”çš„æ•°æ®ç±»å‹
         switch (data.type) {
         case -1: {
             std::stringstream stream(s);
@@ -484,12 +412,13 @@ Tuple RecordManager::readTuple(const char* p, Attribute attr) {
         }
         tuple.addData(data);
     }
+    // æ£€æŸ¥åˆ é™¤æ ‡è®°ï¼š'1'è¡¨ç¤ºå·²åˆ é™¤
     if (*p == '1')
         tuple.setDeleted();
     return tuple;
 }
 
-//»ñÈ¡Ò»¸ötupleµÄ³¤¶È
+// è·å–è®°å½•çš„é•¿åº¦ï¼ˆä»è®°å½•å¤´éƒ¨çš„4å­—èŠ‚é•¿åº¦å­—æ®µè§£æï¼‰
 int RecordManager::getTupleLength(char* p) {
     char tmp[10];
     int i;
@@ -501,9 +430,9 @@ int RecordManager::getTupleLength(char* p) {
     return len;
 }
 
-//ÅĞ¶Ï²åÈëµÄ¼ÇÂ¼ÊÇ·ñºÍÆäËû¼ÇÂ¼³åÍ»
+// æ£€æŸ¥æ–°è®°å½•ä¸å·²æœ‰è®°å½•æ˜¯å¦å†²çªï¼ˆä¸»é”®æˆ–uniqueå±æ€§ï¼‰
 bool RecordManager::isConflict(std::vector<Tuple>& tuples, std::vector<Data>& v, int index) {
-    for (int i = 0; i < tuples.size(); i++) {
+    for (int i = 0; i < (int)tuples.size(); i++) {
         if (tuples[i].isDeleted() == true)
             continue;
         std::vector<Data> d = tuples[i].getData();
@@ -525,12 +454,14 @@ bool RecordManager::isConflict(std::vector<Tuple>& tuples, std::vector<Data>& v,
     return false;
 }
 
-//´øË÷Òı²éÕÒ
+// é€šè¿‡B+æ ‘ç´¢å¼•æœç´¢æ»¡è¶³æ¡ä»¶çš„è®°å½•æ‰€åœ¨å—å·
+// æ ¹æ®ä¸åŒçš„å…³ç³»è¿ç®—ç¬¦æ„é€ æœç´¢èŒƒå›´
 void RecordManager::searchWithIndex(std::string table_name, std::string target_attr, Where where, std::vector<int>& block_ids) {
     IndexManager index_manager(table_name);
     Data tmp_data;
     std::string file_path = "INDEX_FILE_" + target_attr + "_" + table_name;
     if (where.relation_character == LESS || where.relation_character == LESS_OR_EQUAL) {
+        // <æˆ–<=ï¼šæœç´¢èŒƒå›´ä»æœ€å°å€¼åˆ°whereå€¼
         if (where.data.type == -1) {
             tmp_data.type = -1;
             tmp_data.datai = -INF;
@@ -546,6 +477,7 @@ void RecordManager::searchWithIndex(std::string table_name, std::string target_a
         index_manager.searchRange(file_path, tmp_data, where.data, block_ids);
     }
     else if (where.relation_character == GREATER || where.relation_character == GREATER_OR_EQUAL) {
+        // >æˆ–>=ï¼šæœç´¢èŒƒå›´ä»whereå€¼åˆ°æœ€å¤§å€¼
         if (where.data.type == -1) {
             tmp_data.type = -1;
             tmp_data.datai = INF;
@@ -560,38 +492,32 @@ void RecordManager::searchWithIndex(std::string table_name, std::string target_a
         index_manager.searchRange(file_path, where.data, tmp_data, block_ids);
     }
     else {
+        // =ï¼šæœç´¢èŒƒå›´ä»whereå€¼åˆ°whereå€¼
         index_manager.searchRange(file_path, where.data, where.data, block_ids);
     }
 }
 
-//ÔÚ¿éÖĞ½øĞĞÌõ¼şÉ¾³ı
+// åœ¨æŒ‡å®šå—ä¸­åˆ é™¤æ»¡è¶³WHEREæ¡ä»¶çš„è®°å½•
 int RecordManager::conditionDeleteInBlock(std::string table_name, int block_id, Attribute attr, int index, Where where) {
-    //»ñÈ¡µ±Ç°¿éµÄ¾ä±ú
-    table_name = "./database/data/" + table_name;//ĞÂÔö
-    char* p = buffer_manager.getPage(table_name, block_id);
+    std::string table_path = getDataFilePath(table_name);
+    char* p = buffer_manager.getPage(table_path, block_id);
     char* t = p;
     int count = 0;
-    //±éÀú¿éÖĞËùÓĞ¼ÇÂ¼
     while (*p != '\0' && p < t + PAGESIZE) {
-        //¶ÁÈ¡¼ÇÂ¼
         Tuple tuple = readTuple(p, attr);
         std::vector<Data> d = tuple.getData();
-        //¸ù¾İÊôĞÔÀàĞÍÖ´ĞĞ²»Í¬²Ù×÷
+        // æ ¹æ®å±æ€§ç±»å‹åˆ¤æ–­æ¡ä»¶æ˜¯å¦æ»¡è¶³
         switch (attr.type[index]) {
         case -1: {
-            //Èç¹ûÂú×ãwhereÌõ¼ş
             if (isSatisfied(d[index].datai, where.data.datai, where.relation_character) == true) {
-                //½«¼ÇÂ¼É¾³ı
                 p = deleteRecord1(p);
                 count++;
             }
-            //Èç¹û²»Âú×ãwhereÌõ¼ş£¬Ìø¹ı¸Ã¼ÇÂ¼
             else {
                 int len = getTupleLength(p);
                 p = p + len;
             }
         }; break;
-               //Í¬case1
         case 0: {
             if (isSatisfied(d[index].dataf, where.data.dataf, where.relation_character) == true) {
                 p = deleteRecord1(p);
@@ -602,7 +528,6 @@ int RecordManager::conditionDeleteInBlock(std::string table_name, int block_id, 
                 p = p + len;
             }
         }; break;
-              //Í¬case1
         default: {
             if (isSatisfied(d[index].datas, where.data.datas, where.relation_character) == true) {
                 p = deleteRecord1(p);
@@ -615,47 +540,36 @@ int RecordManager::conditionDeleteInBlock(std::string table_name, int block_id, 
         }
         }
     }
-    //½«µ±Ç°¿éĞ´»ØÎÄ¼ş
-    int page_id = buffer_manager.getPageId(table_name, block_id);
-    // buffer_manager.flushPage(page_id , table_name , block_id);
-    // ¸ÄÎª
+    int page_id = buffer_manager.getPageId(table_path, block_id);
     buffer_manager.modifyPage(page_id);
     return count;
 }
 
-//ÔÚ¿éÖĞ½øĞĞÌõ¼ş²éÑ¯
+// åœ¨æŒ‡å®šå—ä¸­æŸ¥è¯¢æ»¡è¶³WHEREæ¡ä»¶çš„è®°å½•
 void RecordManager::conditionSelectInBlock(std::string table_name, int block_id, Attribute attr, int index, Where where, std::vector<Tuple>& v) {
-    //»ñÈ¡µ±Ç°¿éµÄ¾ä±ú
-    table_name = "./database/data/" + table_name;//ĞÂÔö
-    char* p = buffer_manager.getPage(table_name, block_id);
+    std::string table_path = getDataFilePath(table_name);
+    char* p = buffer_manager.getPage(table_path, block_id);
     char* t = p;
-    //±éÀúËùÓĞ¼ÇÂ¼
     while (*p != '\0' && p < t + PAGESIZE) {
-        //¶ÁÈ¡¼ÇÂ¼
         Tuple tuple = readTuple(p, attr);
-        //Èç¹û¼ÇÂ¼ÒÑ±»É¾³ı£¬Ìø¹ı¸Ã¼ÇÂ¼
         if (tuple.isDeleted() == true) {
             int len = getTupleLength(p);
             p = p + len;
             continue;
         }
         std::vector<Data> d = tuple.getData();
-        //¸ù¾İÊôĞÔÀàĞÍÑ¡Ôñ
+        // æ ¹æ®å±æ€§ç±»å‹åˆ¤æ–­æ¡ä»¶æ˜¯å¦æ»¡è¶³
         switch (attr.type[index]) {
         case -1: {
-            //Âú×ãÌõ¼ş£¬Ôò½«¸ÃÔª×éÌí¼Óµ½table
             if (isSatisfied(d[index].datai, where.data.datai, where.relation_character) == true) {
                 v.push_back(tuple);
             }
-            //²»Âú×ãÌõ¼ş£¬Ìø¹ı¸Ã¼ÇÂ¼
         }; break;
-               //Í¬case1
         case 0: {
             if (isSatisfied(d[index].dataf, where.data.dataf, where.relation_character) == true) {
                 v.push_back(tuple);
             }
         }; break;
-              //Í¬case1
         default: {
             if (isSatisfied(d[index].datas, where.data.datas, where.relation_character) == true) {
                 v.push_back(tuple);

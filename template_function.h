@@ -1,10 +1,6 @@
-﻿
-//
-#ifndef _TEMPLATE_FUNCTION_H_
+﻿#ifndef _TEMPLATE_FUNCTION_H_
 #define _TEMPLATE_FUNCTION_H_ 1
 #include <sstream>
-
-//以下是几个模版函数，目的是为了简化record_manager中的代码
 
 template <typename T>
 int getDataLength(T data) {
@@ -53,6 +49,17 @@ bool isSatisfied(T a, T b, WHERE relation) {
             return false;
     };break;
     }
+    return false;
+}
+
+template <typename T>
+T stringToNum(std::string str) {
+    std::stringstream stream(str);
+    T result;
+    stream >> result;
+    if (stream.fail())
+        throw std::exception();
+    return result;
 }
 
 template <typename T>

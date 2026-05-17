@@ -58,6 +58,8 @@ public:
     int flushPage(int page_id, std::string file_name, int block_id);
     // 获取对应文件的对应块在内存中的页号，没有找到返回-1
     int getPageId(std::string file_name, int block_id);
+    // 使指定文件的所有缓存页失效（用于DROP TABLE和ALTER TABLE时清除旧缓存）
+    void invalidateFile(std::string file_name);
 private:
     Page* Frames;//缓冲池，实际上就是一个元素为Page的数组，实际内存空间将分配在堆上
     int frame_size_;//记录总页数
