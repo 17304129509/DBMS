@@ -186,6 +186,18 @@ int BufferManager::getPageId(std::string file_name , int block_id) {
     return -1;
 }
 
+// 使指定文件的所有缓存页失效
+// 当删除表文件或重建表文件时调用，防止缓冲区返回过期的旧数据
+void BufferManager::invalidateFile(std::string file_name) {
+    for (int i = 0; i < frame_size_; i++) {
+        if (Frames[i].getFileName() == file_name) {
+            // 不需要flush脏页，因为文件将被删除或重建
+            // 直接初始化该页为空即可
+            Frames[i].initialize();
+        }
+    }
+}
+
 // 获取空闲页面，采用时钟替换算法
 int BufferManager::getEmptyPageId() {
     for (int i = 0;i < frame_size_;i++) {

@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef _BPLUSTREE_H_
 #define _BPLUSTREE_H_ 1
@@ -1082,8 +1082,12 @@ int BPlusTree<T>::getBlockNum(std::string table_name)
 template <class T>
 void BPlusTree<T>::readFromDiskAll()
 {
-    std::string fname = "./database/index/" + file_name;
-    //std::string fname = file_name;
+    std::string fname;
+    if (current_database.empty()) {
+        fname = "./database/index/" + file_name;
+    } else {
+        fname = "./database/" + current_database + "/index/" + file_name;
+    }
     getFile(fname);
     int block_num = getBlockNum(fname);
 
@@ -1140,8 +1144,12 @@ void BPlusTree<T>::readFromDisk(char* p, char* end)
 template <class T>
 void BPlusTree<T>::writtenbackToDiskAll()
 {
-    std::string fname = "./database/index/" + file_name;
-    //std::string fname = file_name;
+    std::string fname;
+    if (current_database.empty()) {
+        fname = "./database/index/" + file_name;
+    } else {
+        fname = "./database/" + current_database + "/index/" + file_name;
+    }
     getFile(fname);
     int block_num = getBlockNum(fname);
 
